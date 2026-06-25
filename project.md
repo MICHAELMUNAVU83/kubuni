@@ -87,7 +87,7 @@ flowchart TB
     end
 
     subgraph App["Phoenix Application (BEAM)"]
-      Web["Web layer<br/>Router · LiveViews · Controllers"]
+      Web["Web layer<br/>Router · LiveViews · Co ntrollers"]
       subgraph Contexts["Bounded Contexts"]
         Accounts
         Catalog
