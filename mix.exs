@@ -57,6 +57,15 @@ defmodule Kubuni.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
+      {:money, "~> 1.15"},
+      {:req, "~> 0.5"},
+      {:oban, "~> 2.18"},
+      {:chromic_pdf, "~> 1.17"},
+      {:ex_aws, "~> 2.7"},
+      {:ex_aws_s3, "~> 2.5"},
+      {:hackney, "~> 4.0"},
+      {:sweet_xml, "~> 0.7"},
+      {:mox, "~> 1.2", only: :test},
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"}
     ]

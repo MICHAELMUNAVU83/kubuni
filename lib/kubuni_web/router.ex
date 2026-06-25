@@ -17,11 +17,22 @@ defmodule KubuniWeb.Router do
     plug :accepts, ["json"]
   end
 
+  scope "/webhooks", KubuniWeb do
+    pipe_through :api
+    post "/paystack", PaystackWebhookController, :create
+  end
+
   scope "/", KubuniWeb do
     pipe_through :browser
 
     live "/", HomeLive
     get "/landing", PageController, :home
+
+    live_session :public_catalog,
+      on_mount: [{KubuniWeb.UserAuth, :mount_current_user}] do
+      live "/courses", CatalogLive.Index, :index
+      live "/courses/:slug", CatalogLive.Show, :show
+    end
   end
 
   # Other scopes may use custom stacks.
@@ -69,6 +80,22 @@ defmodule KubuniWeb.Router do
       on_mount: [{KubuniWeb.UserAuth, :ensure_authenticated}] do
       live "/users/settings", UserSettingsLive, :edit
       live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
+      live "/dashboard", DashboardLive, :index
+      live "/courses/:slug/checkout", CheckoutLive, :show
+      live "/learn/courses/:slug", CoursePlayerLive, :show
+    end
+
+    get "/media/lectures/:id/playback", MediaController, :playback
+    get "/certificates/:id/download", CertificateController, :download
+    get "/payments/paystack/callback", PaystackCallbackController, :show
+  end
+
+  scope "/admin", KubuniWeb do
+    pipe_through [:browser, :require_authenticated_user, :require_admin]
+
+    live_session :require_admin,
+      on_mount: [{KubuniWeb.UserAuth, :ensure_admin}] do
+      live "/lectures/:id/video", AdminLectureVideoLive, :edit
     end
   end
 

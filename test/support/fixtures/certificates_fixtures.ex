@@ -14,8 +14,31 @@ defmodule Kubuni.CertificatesFixtures do
   Generate a certificate.
   """
   def certificate_fixture(attrs \\ %{}) do
+    attrs = Map.new(attrs)
+    user_id = Map.get_lazy(attrs, :user_id, fn -> Kubuni.AccountsFixtures.user_fixture().id end)
+    type = Map.get(attrs, :type, :module)
+
+    {course_id, module_id} =
+      case type do
+        :course ->
+          {Map.get_lazy(attrs, :course_id, fn -> Kubuni.CatalogFixtures.course_fixture().id end),
+           nil}
+
+        :module ->
+          module =
+            case Map.get(attrs, :module_id) do
+              nil -> Kubuni.CatalogFixtures.course_module_fixture()
+              module_id -> Kubuni.Catalog.get_course_module!(module_id)
+            end
+
+          {Map.get(attrs, :course_id, module.course_id), module.id}
+      end
+
     {:ok, certificate} =
       attrs
+      |> Map.put(:user_id, user_id)
+      |> Map.put(:course_id, course_id)
+      |> Map.put(:module_id, module_id)
       |> Enum.into(%{
         file_key: "some file_key",
         issued_at: ~U[2026-06-24 10:02:00Z],

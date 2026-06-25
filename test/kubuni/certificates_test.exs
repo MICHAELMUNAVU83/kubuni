@@ -1,81 +1,125 @@
 defmodule Kubuni.CertificatesTest do
   use Kubuni.DataCase
 
+  import Kubuni.AccountsFixtures
+  import Kubuni.CatalogFixtures
+  import Kubuni.CertificatesFixtures
+  import Kubuni.EnrollmentsFixtures
+  import Mox
+
   alias Kubuni.Certificates
+  alias Kubuni.Certificates.Certificate
+  alias Kubuni.Certificates.Workers.IssueCertificate
+  alias Kubuni.Learning
 
-  describe "certificates" do
-    alias Kubuni.Certificates.Certificate
+  setup :verify_on_exit!
 
-    import Kubuni.CertificatesFixtures
+  setup do
+    user = user_fixture()
+    course = course_fixture(status: :published)
+    module = course_module_fixture(course_id: course.id, position: 1)
+    lecture = lecture_fixture(module_id: module.id, position: 1, duration_seconds: 100)
+    enrollment_fixture(user_id: user.id, course_id: course.id, status: :active)
 
-    @invalid_attrs %{type: nil, serial_number: nil, file_key: nil, issued_at: nil}
+    %{user: user, course: course, module: module, lecture: lecture}
+  end
 
-    test "list_certificates/0 returns all certificates" do
-      certificate = certificate_fixture()
-      assert Certificates.list_certificates() == [certificate]
-    end
+  test "completion enqueues and issues module and course certificates", context do
+    expect_render_and_upload(2)
 
-    test "get_certificate!/1 returns the certificate with given id" do
-      certificate = certificate_fixture()
-      assert Certificates.get_certificate!(certificate.id) == certificate
-    end
+    assert {:ok, _, [_lecture, {:module_completed, _}, {:course_completed, _}]} =
+             Learning.mark_complete(context.user, context.lecture)
 
-    test "create_certificate/1 with valid data creates a certificate" do
-      valid_attrs = %{
-        type: :module,
-        serial_number: "some serial_number",
-        file_key: "some file_key",
-        issued_at: ~U[2026-06-24 10:02:00Z]
-      }
+    assert Repo.aggregate(
+             from(job in Oban.Job,
+               where: job.worker == "Kubuni.Certificates.Workers.IssueCertificate"
+             ),
+             :count
+           ) == 2
 
-      assert {:ok, %Certificate{} = certificate} = Certificates.create_certificate(valid_attrs)
-      assert certificate.type == :module
-      assert certificate.serial_number == "some serial_number"
-      assert certificate.file_key == "some file_key"
-      assert certificate.issued_at == ~U[2026-06-24 10:02:00Z]
-    end
+    assert :ok =
+             Oban.Testing.perform_job(IssueCertificate, %{
+               user_id: context.user.id,
+               type: "module",
+               scope_id: context.module.id
+             })
 
-    test "create_certificate/1 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = Certificates.create_certificate(@invalid_attrs)
-    end
+    assert :ok =
+             Oban.Testing.perform_job(IssueCertificate, %{
+               user_id: context.user.id,
+               type: "course",
+               scope_id: context.course.id
+             })
 
-    test "update_certificate/2 with valid data updates the certificate" do
-      certificate = certificate_fixture()
+    certificates = Certificates.list_for_user_course(context.user, context.course)
+    assert Enum.map(certificates, & &1.type) |> Enum.sort() == [:course, :module]
+    assert Enum.all?(certificates, &String.starts_with?(&1.serial_number, "KBI-"))
+    assert Enum.uniq_by(certificates, & &1.serial_number) == certificates
+  end
 
-      update_attrs = %{
-        type: :course,
-        serial_number: "some updated serial_number",
-        file_key: "some updated file_key",
-        issued_at: ~U[2026-06-25 10:02:00Z]
-      }
+  test "issuance is idempotent and doesn't render or upload twice", context do
+    expect_render_and_upload(1)
+    {:ok, _, _events} = Learning.mark_complete(context.user, context.lecture)
 
-      assert {:ok, %Certificate{} = certificate} =
-               Certificates.update_certificate(certificate, update_attrs)
+    args = %{
+      user_id: context.user.id,
+      type: "module",
+      scope_id: context.module.id
+    }
 
-      assert certificate.type == :course
-      assert certificate.serial_number == "some updated serial_number"
-      assert certificate.file_key == "some updated file_key"
-      assert certificate.issued_at == ~U[2026-06-25 10:02:00Z]
-    end
+    assert :ok = Oban.Testing.perform_job(IssueCertificate, args)
+    assert :ok = Oban.Testing.perform_job(IssueCertificate, args)
 
-    test "update_certificate/2 with invalid data returns error changeset" do
-      certificate = certificate_fixture()
+    assert Repo.aggregate(
+             from(certificate in Certificate,
+               where:
+                 certificate.user_id == ^context.user.id and
+                   certificate.module_id == ^context.module.id
+             ),
+             :count
+           ) == 1
+  end
 
-      assert {:error, %Ecto.Changeset{}} =
-               Certificates.update_certificate(certificate, @invalid_attrs)
+  test "refuses to issue before the scope is complete", context do
+    assert {:error, :incomplete} =
+             Certificates.issue(context.user.id, :module, context.module.id)
 
-      assert certificate == Certificates.get_certificate!(certificate.id)
-    end
+    assert Repo.aggregate(Certificate, :count) == 0
+  end
 
-    test "delete_certificate/1 deletes the certificate" do
-      certificate = certificate_fixture()
-      assert {:ok, %Certificate{}} = Certificates.delete_certificate(certificate)
-      assert_raise Ecto.NoResultsError, fn -> Certificates.get_certificate!(certificate.id) end
-    end
+  test "signed downloads are learner-owned and short lived", context do
+    certificate =
+      certificate_fixture(
+        user_id: context.user.id,
+        course_id: context.course.id,
+        module_id: context.module.id
+      )
 
-    test "change_certificate/1 returns a certificate changeset" do
-      certificate = certificate_fixture()
-      assert %Ecto.Changeset{} = Certificates.change_certificate(certificate)
-    end
+    expect(Kubuni.CertificateStorageMock, :signed_url, fn key, opts ->
+      assert key == certificate.file_key
+      assert opts[:expires_in] == 300
+      {:ok, "https://r2.example.test/signed"}
+    end)
+
+    assert {:ok, "https://r2.example.test/signed"} =
+             Certificates.download_url(context.user, certificate)
+
+    assert {:error, :forbidden} =
+             Certificates.download_url(user_fixture(), certificate)
+  end
+
+  defp expect_render_and_upload(count) do
+    expect(Kubuni.CertificateRendererMock, :render, count, fn assigns ->
+      assert assigns.learner_name
+      assert assigns.title
+      assert assigns.serial_number
+      {:ok, "%PDF-test"}
+    end)
+
+    expect(Kubuni.CertificateStorageMock, :upload, count, fn key, pdf ->
+      assert String.ends_with?(key, ".pdf")
+      assert pdf == "%PDF-test"
+      :ok
+    end)
   end
 end

@@ -36,85 +36,92 @@ concept described in [`project.md`](project.md). Visual work follows
       optionally `sentry`/`appsignal`.
 - [ ] Configure **Oban** (repo, queues: `payments`, `certificates`, `mailers`,
       `default`) + migration for Oban tables.
-- [ ] Add runtime config/secrets scaffolding in `runtime.exs` for Daraja,
-      Paystack, video provider, R2, mail provider keys.
+- [ ] Add runtime config/secrets scaffolding in `runtime.exs` for Paystack,
+      video provider, R2, and mail provider keys.
 - [ ] Decide & document: keep bcrypt or switch to Argon2 (project.md §13).
 - [ ] Confirm migrations run cleanly (`mix ecto.reset`).
 
 ## Phase 1 — Accounts hardening
 
-- [ ] Add `phone` (normalised `2547XXXXXXXX`) and `role` (`learner` | `admin`)
+- [x] Add `phone` (normalised `2547XXXXXXXX`) and `role` (`learner` | `admin`)
       to `users` (migration + changeset + validation).
-- [ ] Capture & normalise phone in registration; validate MSISDN format.
-- [ ] Add `require_admin` / role-based `on_mount` + plug for admin routes.
-- [ ] Welcome email on confirmation (wire to Notifications, Phase 9).
+- [x] Capture & normalise phone in registration; validate MSISDN format.
+- [x] Add `require_admin` / role-based `on_mount` + plug for admin routes.
+- [x] Welcome email on confirmation (wire to Notifications, Phase 8).
 
 ## Phase 2 — Catalog (course structure)
 
-- [ ] Flesh out `Catalog` API: published-course queries, ordered modules &
+- [x] Flesh out `Catalog` API: published-course queries, ordered modules &
       lectures, slug lookup, pricing helpers (ex_money).
-- [ ] Add fields/validations per data model: `slug` (unique), `status`
+- [x] Add fields/validations per data model: `slug` (unique), `status`
       (draft/published), `position`, `price_minor`, `currency`, ordering
       uniqueness (`course_id+position`, `module_id+position`).
-- [ ] Public **course catalog** LiveView (list published courses) — design.md.
-- [ ] Public **course detail / landing** LiveView (modules, lectures preview,
+- [x] Public **course catalog** LiveView (list published courses) — design.md.
+- [x] Public **course detail / landing** LiveView (modules, lectures preview,
       price, enroll CTA).
-- [ ] `priv/repo/seeds.exs`: seed the first course _"The Human Stack"_ with its
+- [x] `priv/repo/seeds.exs`: seed the first course _"The Human Stack"_ with its
       6 modules + lectures.
 
 ## Phase 3 — Enrollments (THE pay-gate) 🔒
 
-- [ ] `Enrollments` API: `enrolled?/2`, `active_enrollment/2`,
+- [x] `Enrollments` API: `enrolled?/2`, `active_enrollment/2`,
       `can_access_course?/can_access_lecture?` — single server-side authority.
-- [ ] `create_pending_enrollment/2` (status `pending → active`), unique
+- [x] `create_pending_enrollment/2` (status `pending → active`), unique
       `(user_id, course_id)`.
-- [ ] Enforce gate in every content/token path (course player, lecture, media
+- [x] Enforce gate in every content/token path (course player, lecture, media
       token) — never trust the client.
-- [ ] Tests proving no content/token is served without an active enrollment.
+- [x] Tests proving no content/token is served without an active enrollment.
 
-## Phase 4 — Payments: M-Pesa STK Push (showcase flow) 💳
+## Phase 4 — Payments: Paystack 💳
 
-- [ ] Define `Payments.Provider` behaviour (`initiate/verify/handle_callback`).
-- [ ] M-Pesa Daraja adapter: STK Push initiate, auth token, callback parsing.
-- [ ] `provider_reference` unique idempotency key; `raw_payload` capture.
-- [ ] Payment callback **controller** (`/payments/mpesa/callback`) → enqueue
-      idempotent Oban `ProcessMpesaCallback`.
-- [ ] Worker: mark payment successful, activate enrollment, broadcast
+- [x] Define a `Payments.Provider` behaviour (`initiate/verify`) so Paystack can
+      be replaced with Mox in tests.
+- [x] Adapt and harden the existing `Kubuni.Paystack` initialize/verify client:
+      consistent return tuples, configurable API URL/callback URL, runtime
+      secret only, and no hardcoded fallback key.
+- [x] Create pending enrollment + payment before initialization; send Paystack
+      the amount in minor units and use the payment's unique
+      `provider_reference` as the transaction reference/idempotency key.
+- [x] Store relevant Paystack responses/events in `raw_payload`; never store
+      card details.
+- [x] Add a **Checkout LiveView**: "Enroll & Pay" → initialize transaction →
+      redirect to Paystack's hosted checkout → waiting/verification state.
+- [x] Add a browser callback route that verifies the transaction server-side;
+      never activate an enrollment from callback query parameters alone.
+- [x] Add a signature-verified Paystack **webhook** controller
+      (`x-paystack-signature`, HMAC-SHA512) that enqueues an idempotent Oban
+      `ProcessPaystackWebhook` job and responds quickly.
+- [x] Worker: verify the transaction with Paystack, atomically mark the payment
+      successful, activate the enrollment, and broadcast
       `{:payment_confirmed, enrollment}` on `"user:{id}"`.
-- [ ] **Checkout LiveView**: "Enroll & Pay (M-Pesa)" → waiting state →
-      PubSub unlock → redirect to course. (design.md)
-- [ ] Oban **cron reconciliation** job for `pending` payments older than ~2 min
-      (query Daraja STK status).
-- [ ] Tests with Mox: success, failure, duplicate/replayed callback, dropped
-      callback → reconciled.
+- [x] Checkout subscribes to PubSub and redirects to the course after the
+      enrollment is activated. (design.md)
+- [x] Add an Oban **cron reconciliation** job for `pending` payments older than
+      ~2 minutes by querying Paystack's verify endpoint.
+- [x] Tests with Mox: initialization, success, failure, invalid signature,
+      verify-on-webhook, duplicate/replayed webhook, browser callback safety,
+      and dropped webhook → reconciled.
 
-## Phase 5 — Payments: Paystack (cards/regional)
+## Phase 5 — Media (video delivery & protection) 🎬
 
-- [ ] Paystack adapter (initialise transaction, verify).
-- [ ] Signature-verified **webhook** controller → Oban `ProcessPaystackWebhook`.
-- [ ] Reuse same enrollment-activation + PubSub unlock path. No card data stored.
-- [ ] Tests: signature verification, verify-on-webhook, idempotency.
-
-## Phase 6 — Media (video delivery & protection) 🎬
-
-- [ ] `Media` behaviour + adapter (Mux **or** Cloudflare Stream — pick one).
-- [ ] `playback_token/3`: short-lived, viewer-bound — minted **only** after
+- [x] `Media` behaviour + adapter (**Mux**).
+- [x] `playback_token/3`: short-lived, viewer-bound — minted **only** after
       Enrollments gate passes (403 otherwise).
-- [ ] Admin direct-upload flow → store returned `video_asset_id`.
-- [ ] LiveView video player + JS hook (HLS / provider player).
-- [ ] Content-protection deterrents: no raw URLs, disable context menu, dynamic
+- [x] Admin direct-upload flow → store returned `video_asset_id`.
+- [x] LiveView video player + JS hook (HLS / provider player).
+- [x] Content-protection deterrents: no raw URLs, disable context menu, dynamic
       email watermark overlay (project.md §8).
 
-## Phase 7 — Learning (progress & completion) 📈
+## Phase 6 — Learning (progress & completion) 📈
 
-- [ ] `Learning` API: upsert progress (`user_id+lecture_id` unique),
+- [x] `Learning` API: upsert progress (`user_id+lecture_id` unique),
       `last_position_seconds`, completion at ~95% or explicit "Mark complete".
-- [ ] JS hook pushes `timeupdate`/`ended` → save progress.
-- [ ] Completion roll-up: lecture → module → course; emit completion events.
-- [ ] Course player LiveView: live progress bar, "next lecture" unlock.
-- [ ] Tests for completion thresholds & module/course roll-up.
+- [x] JS hook pushes `timeupdate`/`ended` → save progress.
+- [x] Completion roll-up: lecture → module → course; emit completion events.
+- [x] Course player LiveView: live progress bar, "next lecture" unlock.
+- [x] Tests for completion thresholds & module/course roll-up.
 
-## Phase 8 — Certificates 🏅
+## Phase 7 — Certificates 🏅
 
 - [ ] `Certificates` API: issue per **module** and per **course**; unique
       `serial_number`.
@@ -125,18 +132,18 @@ concept described in [`project.md`](project.md). Visual work follows
       "certificate ready").
 - [ ] Tests: issuance triggered by completion, idempotency, no duplicate serial.
 
-## Phase 9 — Notifications
+## Phase 8 — Notifications
 
 - [ ] Swoosh mailers via Oban `mailers` queue: welcome, payment confirmed,
       certificate issued.
 - [ ] Trigger from domain events; configure transactional provider (SES/Resend).
 
-## Phase 10 — Learner dashboard
+## Phase 9 — Learner dashboard
 
-- [ ] "My courses" / continue-watching LiveView.
-- [ ] Progress per course, certificate downloads, payment receipts.
+- [x] "My courses" / continue-watching LiveView.
+- [x] Progress per course, certificate downloads, payment receipts.
 
-## Phase 11 — Admin
+## Phase 10 — Admin
 
 - [ ] Role-gated admin section (repurpose generated CRUD LiveViews, add to
       router under admin pipeline).
@@ -146,7 +153,7 @@ concept described in [`project.md`](project.md). Visual work follows
 - [ ] Basic analytics (Ecto aggregates): registrations, payments (count/sum/
       success rate), completion rates.
 
-## Phase 12 — Hardening, observability & deploy
+## Phase 11 — Hardening, observability & deploy
 
 - [ ] Rate-limiting on auth + payment-init endpoints; verify CSRF, secure
       headers, HSTS.
@@ -161,8 +168,8 @@ concept described in [`project.md`](project.md). Visual work follows
 ## Open questions to resolve (from project.md §17)
 
 - [ ] First course price + currency (assume KES, one-time)?
-- [ ] Daraja + Paystack: sandbox first or live credentials available?
-- [ ] Video provider decision (Mux / Cloudflare Stream / Bunny) before Phase 6.
+- [ ] Paystack: sandbox first or live credentials available?
+- [x] Video provider decision: **Mux** for v1.
 - [ ] Certificate design: Tailwind template OK or fixed design to match?
 - [ ] Final brand assets (logo, exact hex) timeline.
 </content>

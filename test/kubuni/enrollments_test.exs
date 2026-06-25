@@ -1,77 +1,64 @@
 defmodule Kubuni.EnrollmentsTest do
   use Kubuni.DataCase
 
+  import Mox
+  import Kubuni.AccountsFixtures
+  import Kubuni.CatalogFixtures
+
   alias Kubuni.Enrollments
 
-  describe "enrollments" do
-    alias Kubuni.Enrollments.Enrollment
+  setup :verify_on_exit!
 
-    import Kubuni.EnrollmentsFixtures
+  test "pending enrollment is unique and never grants course access" do
+    user = user_fixture()
+    course = course_fixture()
 
-    @invalid_attrs %{status: nil, enrolled_at: nil, activated_at: nil}
+    assert {:ok, pending} = Enrollments.create_pending_enrollment(user, course)
+    assert {:ok, same} = Enrollments.create_pending_enrollment(user, course)
+    assert pending.id == same.id
+    assert Enrollments.enrolled?(user, course)
+    refute Enrollments.can_access_course?(user, course)
+    assert Enrollments.active_enrollment(user, course) == nil
+  end
 
-    test "list_enrollments/0 returns all enrollments" do
-      enrollment = enrollment_fixture()
-      assert Enrollments.list_enrollments() == [enrollment]
-    end
+  test "activation grants course and lecture access" do
+    user = user_fixture()
+    course = course_fixture()
+    module = course_module_fixture(course_id: course.id)
+    lecture = lecture_fixture(module_id: module.id)
+    {:ok, pending} = Enrollments.create_pending_enrollment(user, course)
 
-    test "get_enrollment!/1 returns the enrollment with given id" do
-      enrollment = enrollment_fixture()
-      assert Enrollments.get_enrollment!(enrollment.id) == enrollment
-    end
+    assert {:ok, active} = Enrollments.activate_enrollment(pending)
+    assert active.status == :active
+    assert active.activated_at
+    assert Enrollments.can_access_course?(user, course)
+    assert Enrollments.can_access_lecture?(user, lecture)
+    assert {:ok, ^lecture} = Enrollments.authorize_lecture(user, lecture)
+  end
 
-    test "create_enrollment/1 with valid data creates a enrollment" do
-      valid_attrs = %{
-        status: :pending,
-        enrolled_at: ~U[2026-06-24 10:02:00Z],
-        activated_at: ~U[2026-06-24 10:02:00Z]
-      }
+  test "playback provider is never called without an active enrollment" do
+    user = user_fixture()
+    course = course_fixture()
+    module = course_module_fixture(course_id: course.id)
+    lecture = lecture_fixture(module_id: module.id)
 
-      assert {:ok, %Enrollment{} = enrollment} = Enrollments.create_enrollment(valid_attrs)
-      assert enrollment.status == :pending
-      assert enrollment.enrolled_at == ~U[2026-06-24 10:02:00Z]
-      assert enrollment.activated_at == ~U[2026-06-24 10:02:00Z]
-    end
+    assert {:error, :forbidden} =
+             Kubuni.Media.playback_token(user, lecture, 300, Kubuni.MediaProviderMock)
+  end
 
-    test "create_enrollment/1 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = Enrollments.create_enrollment(@invalid_attrs)
-    end
+  test "playback tokens may be requested only after activation" do
+    user = user_fixture()
+    course = course_fixture()
+    module = course_module_fixture(course_id: course.id)
+    lecture = lecture_fixture(module_id: module.id)
+    {:ok, pending} = Enrollments.create_pending_enrollment(user, course)
+    {:ok, _active} = Enrollments.activate_enrollment(pending)
 
-    test "update_enrollment/2 with valid data updates the enrollment" do
-      enrollment = enrollment_fixture()
+    expect(Kubuni.MediaProviderMock, :playback_token, fn ^lecture, ^user, 300 ->
+      {:ok, "signed-token"}
+    end)
 
-      update_attrs = %{
-        status: :active,
-        enrolled_at: ~U[2026-06-25 10:02:00Z],
-        activated_at: ~U[2026-06-25 10:02:00Z]
-      }
-
-      assert {:ok, %Enrollment{} = enrollment} =
-               Enrollments.update_enrollment(enrollment, update_attrs)
-
-      assert enrollment.status == :active
-      assert enrollment.enrolled_at == ~U[2026-06-25 10:02:00Z]
-      assert enrollment.activated_at == ~U[2026-06-25 10:02:00Z]
-    end
-
-    test "update_enrollment/2 with invalid data returns error changeset" do
-      enrollment = enrollment_fixture()
-
-      assert {:error, %Ecto.Changeset{}} =
-               Enrollments.update_enrollment(enrollment, @invalid_attrs)
-
-      assert enrollment == Enrollments.get_enrollment!(enrollment.id)
-    end
-
-    test "delete_enrollment/1 deletes the enrollment" do
-      enrollment = enrollment_fixture()
-      assert {:ok, %Enrollment{}} = Enrollments.delete_enrollment(enrollment)
-      assert_raise Ecto.NoResultsError, fn -> Enrollments.get_enrollment!(enrollment.id) end
-    end
-
-    test "change_enrollment/1 returns a enrollment changeset" do
-      enrollment = enrollment_fixture()
-      assert %Ecto.Changeset{} = Enrollments.change_enrollment(enrollment)
-    end
+    assert {:ok, "signed-token"} =
+             Kubuni.Media.playback_token(user, lecture, 300, Kubuni.MediaProviderMock)
   end
 end

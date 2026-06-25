@@ -60,6 +60,15 @@ defmodule Kubuni.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
 
+  @doc """
+  Updates a user's role through the administrative changeset.
+  """
+  def update_user_role(%User{} = user, role) do
+    user
+    |> User.role_changeset(%{role: role})
+    |> Repo.update()
+  end
+
   ## User registration
 
   @doc """
@@ -277,6 +286,7 @@ defmodule Kubuni.Accounts do
     with {:ok, query} <- UserToken.verify_email_token_query(token, "confirm"),
          %User{} = user <- Repo.one(query),
          {:ok, %{user: user}} <- Repo.transaction(confirm_user_multi(user)) do
+      Kubuni.Notifications.deliver_welcome(user)
       {:ok, user}
     else
       _ -> :error

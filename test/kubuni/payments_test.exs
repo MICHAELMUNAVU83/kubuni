@@ -1,96 +1,184 @@
 defmodule Kubuni.PaymentsTest do
   use Kubuni.DataCase
+  use Oban.Testing, repo: Kubuni.Repo
 
-  alias Kubuni.Payments
+  import Mox
+  import Kubuni.AccountsFixtures
+  import Kubuni.CatalogFixtures
 
-  describe "payments" do
-    alias Kubuni.Payments.Payment
+  alias Kubuni.{Enrollments, Payments, Repo}
+  alias Kubuni.Payments.Workers.{ProcessPaystackWebhook, ReconcilePendingPayments}
 
-    import Kubuni.PaymentsFixtures
+  setup :verify_on_exit!
 
-    @invalid_attrs %{
-      status: nil,
-      currency: nil,
-      provider: nil,
-      provider_reference: nil,
-      amount_minor: nil,
-      raw_payload: nil,
-      paid_at: nil
+  test "initialization persists a pending enrollment and payment before calling Paystack" do
+    user = user_fixture()
+    course = course_fixture(price_minor: 125_000, currency: "KES")
+
+    expect(Kubuni.Payments.ProviderMock, :initiate, fn payment ->
+      assert Repo.get!(Kubuni.Payments.Payment, payment.id)
+      assert payment.amount_minor == 125_000
+      assert payment.provider_reference =~ "KBI-"
+      assert payment.user.email == user.email
+
+      {:ok,
+       %{
+         "authorization_url" => "https://checkout.paystack.test/abc",
+         "access_code" => "access-code",
+         "reference" => payment.provider_reference,
+         "card" => %{"last4" => "4081"}
+       }}
+    end)
+
+    assert {:ok, result} = Payments.initialize_checkout(user, course)
+    assert result.authorization_url == "https://checkout.paystack.test/abc"
+    assert result.enrollment.status == :pending
+    assert result.payment.status == :pending
+    refute Map.has_key?(result.payment.raw_payload["initialization"], "card")
+  end
+
+  test "verified success atomically completes payment and activates enrollment" do
+    user = user_fixture()
+    course = course_fixture(price_minor: 80_000, currency: "KES")
+    {:ok, %{payment: payment}} = Payments.create_pending_checkout(user, course)
+    Payments.subscribe(user)
+
+    expect(Kubuni.Payments.ProviderMock, :verify, fn reference ->
+      assert reference == payment.provider_reference
+      {:ok, success_payload(payment)}
+    end)
+
+    assert {:ok, %{payment: successful, enrollment: active}} =
+             Payments.process_paystack_reference(payment.provider_reference)
+
+    assert successful.status == :successful
+    assert successful.paid_at
+    assert active.status == :active
+    assert Enrollments.can_access_course?(user, course)
+    assert_receive {:payment_confirmed, %{id: id}}
+    assert id == active.id
+  end
+
+  test "failed verification does not activate access" do
+    user = user_fixture()
+    course = course_fixture(price_minor: 80_000, currency: "KES")
+
+    {:ok, %{payment: payment, enrollment: enrollment}} =
+      Payments.create_pending_checkout(user, course)
+
+    expect(Kubuni.Payments.ProviderMock, :verify, fn _reference ->
+      {:ok, Map.put(success_payload(payment), "status", "failed")}
+    end)
+
+    assert {:error, {:payment_failed, failed}} =
+             Payments.process_paystack_reference(payment.provider_reference)
+
+    assert failed.status == :failed
+    assert Repo.reload(enrollment).status == :pending
+    refute Enrollments.can_access_course?(user, course)
+  end
+
+  test "duplicate processing is idempotent and does not verify twice" do
+    user = user_fixture()
+    course = course_fixture(price_minor: 80_000, currency: "KES")
+    {:ok, %{payment: payment}} = Payments.create_pending_checkout(user, course)
+
+    expect(Kubuni.Payments.ProviderMock, :verify, 1, fn _reference ->
+      {:ok, success_payload(payment)}
+    end)
+
+    assert {:ok, first} = Payments.process_paystack_reference(payment.provider_reference)
+    assert {:ok, second} = Payments.process_paystack_reference(payment.provider_reference)
+    assert first.payment.id == second.payment.id
+    assert first.enrollment.id == second.enrollment.id
+  end
+
+  test "amount mismatch is rejected without granting access" do
+    user = user_fixture()
+    course = course_fixture(price_minor: 80_000, currency: "KES")
+    {:ok, %{payment: payment}} = Payments.create_pending_checkout(user, course)
+
+    expect(Kubuni.Payments.ProviderMock, :verify, fn _reference ->
+      {:ok, Map.put(success_payload(payment), "amount", payment.amount_minor + 1)}
+    end)
+
+    assert {:error, :amount_mismatch} =
+             Payments.process_paystack_reference(payment.provider_reference)
+
+    refute Enrollments.can_access_course?(user, course)
+  end
+
+  test "webhook worker verifies before activation and safely handles replay" do
+    user = user_fixture()
+    course = course_fixture(price_minor: 80_000, currency: "KES")
+    {:ok, %{payment: payment}} = Payments.create_pending_checkout(user, course)
+
+    expect(Kubuni.Payments.ProviderMock, :verify, 1, fn _reference ->
+      {:ok, success_payload(payment)}
+    end)
+
+    args = %{
+      "reference" => payment.provider_reference,
+      "event" => %{
+        "event" => "charge.success",
+        "data" => %{
+          "reference" => payment.provider_reference,
+          "authorization" => %{"last4" => "4081"}
+        }
+      }
     }
 
-    test "list_payments/0 returns all payments" do
-      payment = payment_fixture()
-      assert Payments.list_payments() == [payment]
-    end
+    assert :ok = ProcessPaystackWebhook.perform(%Oban.Job{args: args})
+    assert :ok = ProcessPaystackWebhook.perform(%Oban.Job{args: args})
+    assert Enrollments.can_access_course?(user, course)
 
-    test "get_payment!/1 returns the payment with given id" do
-      payment = payment_fixture()
-      assert Payments.get_payment!(payment.id) == payment
-    end
+    stored = Payments.get_payment!(payment.id)
+    refute get_in(stored.raw_payload, ["webhook", "data", "authorization"])
+  end
 
-    test "create_payment/1 with valid data creates a payment" do
-      valid_attrs = %{
-        status: :pending,
-        currency: "some currency",
-        provider: :mpesa,
-        provider_reference: "some provider_reference",
-        amount_minor: 42,
-        raw_payload: %{},
-        paid_at: ~U[2026-06-24 10:02:00Z]
-      }
+  test "stale pending payments are enqueued for reconciliation" do
+    user = user_fixture()
+    course = course_fixture(price_minor: 80_000, currency: "KES")
+    {:ok, %{payment: payment}} = Payments.create_pending_checkout(user, course)
 
-      assert {:ok, %Payment{} = payment} = Payments.create_payment(valid_attrs)
-      assert payment.status == :pending
-      assert payment.currency == "some currency"
-      assert payment.provider == :mpesa
-      assert payment.provider_reference == "some provider_reference"
-      assert payment.amount_minor == 42
-      assert payment.raw_payload == %{}
-      assert payment.paid_at == ~U[2026-06-24 10:02:00Z]
-    end
+    Repo.update_all(
+      from(p in Kubuni.Payments.Payment, where: p.id == ^payment.id),
+      set: [
+        inserted_at: DateTime.add(DateTime.utc_now(), -180, :second) |> DateTime.truncate(:second)
+      ]
+    )
 
-    test "create_payment/1 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = Payments.create_payment(@invalid_attrs)
-    end
+    assert :ok = ReconcilePendingPayments.perform(%Oban.Job{args: %{}})
 
-    test "update_payment/2 with valid data updates the payment" do
-      payment = payment_fixture()
+    assert_enqueued(
+      worker: ProcessPaystackWebhook,
+      args: %{"reference" => payment.provider_reference}
+    )
 
-      update_attrs = %{
-        status: :successful,
-        currency: "some updated currency",
-        provider: :paystack,
-        provider_reference: "some updated provider_reference",
-        amount_minor: 43,
-        raw_payload: %{},
-        paid_at: ~U[2026-06-25 10:02:00Z]
-      }
+    expect(Kubuni.Payments.ProviderMock, :verify, fn _reference ->
+      {:ok, success_payload(payment)}
+    end)
 
-      assert {:ok, %Payment{} = payment} = Payments.update_payment(payment, update_attrs)
-      assert payment.status == :successful
-      assert payment.currency == "some updated currency"
-      assert payment.provider == :paystack
-      assert payment.provider_reference == "some updated provider_reference"
-      assert payment.amount_minor == 43
-      assert payment.raw_payload == %{}
-      assert payment.paid_at == ~U[2026-06-25 10:02:00Z]
-    end
+    assert :ok =
+             ProcessPaystackWebhook.perform(%Oban.Job{
+               args: %{
+                 "reference" => payment.provider_reference,
+                 "event" => %{"event" => "reconciliation"}
+               }
+             })
 
-    test "update_payment/2 with invalid data returns error changeset" do
-      payment = payment_fixture()
-      assert {:error, %Ecto.Changeset{}} = Payments.update_payment(payment, @invalid_attrs)
-      assert payment == Payments.get_payment!(payment.id)
-    end
+    assert Enrollments.can_access_course?(user, course)
+  end
 
-    test "delete_payment/1 deletes the payment" do
-      payment = payment_fixture()
-      assert {:ok, %Payment{}} = Payments.delete_payment(payment)
-      assert_raise Ecto.NoResultsError, fn -> Payments.get_payment!(payment.id) end
-    end
-
-    test "change_payment/1 returns a payment changeset" do
-      payment = payment_fixture()
-      assert %Ecto.Changeset{} = Payments.change_payment(payment)
-    end
+  defp success_payload(payment) do
+    %{
+      "id" => 123,
+      "reference" => payment.provider_reference,
+      "status" => "success",
+      "amount" => payment.amount_minor,
+      "currency" => payment.currency,
+      "paid_at" => "2026-06-25T12:00:00Z",
+      "authorization" => %{"last4" => "4081"}
+    }
   end
 end

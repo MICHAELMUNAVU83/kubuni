@@ -1,0 +1,104 @@
+defmodule KubuniWeb.CatalogLive.Index do
+  use KubuniWeb, :live_view
+
+  alias Kubuni.Catalog
+
+  @impl true
+  def mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> assign(:page_title, "Courses")
+     |> assign(:courses, Catalog.list_published_courses())}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <div class="min-h-screen bg-soft text-dark">
+      <header class="border-b border-black/5 bg-white">
+        <div class="mx-auto flex max-w-container items-center justify-between px-5 py-5 lg:px-8">
+          <.link navigate={~p"/"} class="flex items-center gap-3 font-bold text-dark">
+            <span class="grid h-10 w-10 place-items-center rounded-[10px] bg-primary text-white">
+              K
+            </span>
+            <span>Kubuni</span>
+          </.link>
+          <nav class="flex items-center gap-5 text-sm font-medium">
+            <.link navigate={~p"/courses"} class="text-primary">Courses</.link>
+            <.link
+              navigate={if @current_user, do: ~p"/dashboard", else: ~p"/users/log_in"}
+              class="text-dark transition hover:text-primary"
+            >
+              {if @current_user, do: "My learning", else: "Log in"}
+            </.link>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <section class="bg-gradient-to-b from-mint via-white to-soft py-20 lg:py-28">
+          <div class="mx-auto max-w-container px-5 lg:px-8">
+            <div class="mx-auto max-w-2xl text-center">
+              <span class="rounded-full bg-mint px-3 py-1 text-sm font-medium text-primary">
+                Practical learning
+              </span>
+              <h1 class="mt-6 text-4xl font-semibold leading-[1.1] text-dark sm:text-5xl lg:text-6xl">
+                Build the human skills that move technical work forward.
+              </h1>
+              <p class="mt-6 text-lg text-body">
+                Focused, video-based courses for technology professionals who want to communicate
+                clearly, present confidently, and lead with influence.
+              </p>
+            </div>
+
+            <div
+              :if={@courses != []}
+              id="published-courses"
+              class="mt-14 grid gap-7 md:grid-cols-2 lg:grid-cols-3"
+            >
+              <.link
+                :for={course <- @courses}
+                navigate={~p"/courses/#{course.slug}"}
+                class="group block overflow-hidden rounded-3xl border border-black/5 bg-white transition hover:shadow-xl"
+              >
+                <div class="overflow-hidden bg-mint">
+                  <img
+                    src={course.thumbnail_key}
+                    alt=""
+                    class="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                </div>
+                <div class="p-6">
+                  <div class="flex items-center justify-between gap-4">
+                    <span class="rounded-full bg-mint px-3 py-1 text-sm font-medium text-primary">
+                      Communication
+                    </span>
+                    <span class="text-sm font-semibold text-dark">
+                      {Catalog.format_price(course)}
+                    </span>
+                  </div>
+                  <h2 class="mt-5 text-xl font-semibold text-dark">{course.title}</h2>
+                  <p class="mt-3 text-body">{course.subtitle}</p>
+                  <span class="mt-6 inline-flex items-center gap-2 font-medium text-primary">
+                    View course <.icon name="hero-arrow-right-mini" class="h-4 w-4" />
+                  </span>
+                </div>
+              </.link>
+            </div>
+
+            <div
+              :if={@courses == []}
+              id="empty-catalog"
+              class="mx-auto mt-14 max-w-xl rounded-3xl border border-black/5 bg-white p-10 text-center"
+            >
+              <.icon name="hero-academic-cap" class="h-10 w-10 text-primary" />
+              <h2 class="mt-4 text-xl font-semibold">New courses are on the way.</h2>
+              <p class="mt-2 text-body">Check back soon for Kubuni's first learning experience.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    """
+  end
+end

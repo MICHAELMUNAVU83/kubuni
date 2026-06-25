@@ -36,8 +36,8 @@ defmodule Kubuni.CatalogTest do
         status: :draft,
         description: "some description",
         title: "some title",
-        currency: "some currency",
-        slug: "some slug",
+        currency: "kes",
+        slug: "Some Course",
         subtitle: "some subtitle",
         thumbnail_key: "some thumbnail_key",
         price_minor: 42
@@ -48,8 +48,8 @@ defmodule Kubuni.CatalogTest do
       assert course.status == :draft
       assert course.description == "some description"
       assert course.title == "some title"
-      assert course.currency == "some currency"
-      assert course.slug == "some slug"
+      assert course.currency == "KES"
+      assert course.slug == "some-course"
       assert course.subtitle == "some subtitle"
       assert course.thumbnail_key == "some thumbnail_key"
       assert course.price_minor == 42
@@ -67,8 +67,8 @@ defmodule Kubuni.CatalogTest do
         status: :published,
         description: "some updated description",
         title: "some updated title",
-        currency: "some updated currency",
-        slug: "some updated slug",
+        currency: "usd",
+        slug: "Some Updated Slug",
         subtitle: "some updated subtitle",
         thumbnail_key: "some updated thumbnail_key",
         price_minor: 43
@@ -79,8 +79,8 @@ defmodule Kubuni.CatalogTest do
       assert course.status == :published
       assert course.description == "some updated description"
       assert course.title == "some updated title"
-      assert course.currency == "some updated currency"
-      assert course.slug == "some updated slug"
+      assert course.currency == "USD"
+      assert course.slug == "some-updated-slug"
       assert course.subtitle == "some updated subtitle"
       assert course.thumbnail_key == "some updated thumbnail_key"
       assert course.price_minor == 43
@@ -102,6 +102,21 @@ defmodule Kubuni.CatalogTest do
       course = course_fixture()
       assert %Ecto.Changeset{} = Catalog.change_course(course)
     end
+
+    test "list_published_courses/0 only returns published courses in position order" do
+      _draft = course_fixture(position: 1, status: :draft)
+      second = course_fixture(position: 2, status: :published)
+      first = course_fixture(position: 1, status: :published)
+
+      assert Catalog.list_published_courses() == [first, second]
+    end
+
+    test "pricing helpers preserve integer minor units and currency" do
+      course = course_fixture(price_minor: 15_000_00, currency: "KES")
+
+      assert %Money{amount: 15_000_00, currency: :KES} = Catalog.price(course)
+      assert Catalog.format_price(course) =~ "KES"
+    end
   end
 
   describe "modules" do
@@ -122,7 +137,14 @@ defmodule Kubuni.CatalogTest do
     end
 
     test "create_course_module/1 with valid data creates a course_module" do
-      valid_attrs = %{position: 42, description: "some description", title: "some title"}
+      course = course_fixture()
+
+      valid_attrs = %{
+        course_id: course.id,
+        position: 42,
+        description: "some description",
+        title: "some title"
+      }
 
       assert {:ok, %CourseModule{} = course_module} = Catalog.create_course_module(valid_attrs)
       assert course_module.position == 42
@@ -197,7 +219,10 @@ defmodule Kubuni.CatalogTest do
     end
 
     test "create_lecture/1 with valid data creates a lecture" do
+      course_module = course_module_fixture()
+
       valid_attrs = %{
+        module_id: course_module.id,
         position: 42,
         description: "some description",
         title: "some title",
@@ -255,6 +280,23 @@ defmodule Kubuni.CatalogTest do
     test "change_lecture/1 returns a lecture changeset" do
       lecture = lecture_fixture()
       assert %Ecto.Changeset{} = Catalog.change_lecture(lecture)
+    end
+
+    test "slug lookup preloads modules and lectures in position order" do
+      course = course_fixture(status: :published)
+      later_module = course_module_fixture(course_id: course.id, position: 2)
+      first_module = course_module_fixture(course_id: course.id, position: 1)
+      later_lecture = lecture_fixture(module_id: first_module.id, position: 2)
+      first_lecture = lecture_fixture(module_id: first_module.id, position: 1)
+
+      loaded = Catalog.get_published_course_by_slug!(course.slug)
+
+      assert Enum.map(loaded.modules, & &1.id) == [first_module.id, later_module.id]
+
+      assert Enum.map(hd(loaded.modules).lectures, & &1.id) == [
+               first_lecture.id,
+               later_lecture.id
+             ]
     end
   end
 end

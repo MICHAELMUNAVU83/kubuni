@@ -6,7 +6,7 @@ defmodule Kubuni.Catalog do
   import Ecto.Query, warn: false
   alias Kubuni.Repo
 
-  alias Kubuni.Catalog.Course
+  alias Kubuni.Catalog.{Course, CourseModule, Lecture}
 
   @doc """
   Returns the list of courses.
@@ -18,7 +18,19 @@ defmodule Kubuni.Catalog do
 
   """
   def list_courses do
-    Repo.all(Course)
+    Course
+    |> order_by([course], asc: course.position, asc: course.title)
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists published courses in their public display order.
+  """
+  def list_published_courses do
+    Course
+    |> where([course], course.status == :published)
+    |> order_by([course], asc: course.position, asc: course.title)
+    |> Repo.all()
   end
 
   @doc """
@@ -36,6 +48,59 @@ defmodule Kubuni.Catalog do
 
   """
   def get_course!(id), do: Repo.get!(Course, id)
+
+  @doc """
+  Gets a course by slug, including ordered modules and lectures.
+  """
+  def get_course_by_slug!(slug) when is_binary(slug) do
+    Course
+    |> Repo.get_by!(slug: slug)
+    |> preload_outline()
+  end
+
+  @doc """
+  Gets a published course by slug, including ordered modules and lectures.
+  """
+  def get_published_course_by_slug!(slug) when is_binary(slug) do
+    Course
+    |> where([course], course.status == :published and course.slug == ^slug)
+    |> Repo.one!()
+    |> preload_outline()
+  end
+
+  @doc """
+  Converts the persisted integer minor units into a currency-aware value.
+  """
+  def price(%Course{price_minor: amount, currency: currency}) do
+    Money.new(amount, currency)
+  end
+
+  @doc """
+  Formats a course price for public display.
+  """
+  def format_price(%Course{} = course) do
+    course
+    |> price()
+    |> Money.to_string(symbol: false, code: true)
+  end
+
+  def lecture_count(%Course{modules: modules}) when is_list(modules) do
+    Enum.sum(Enum.map(modules, &length(&1.lectures)))
+  end
+
+  def duration_seconds(%Course{modules: modules}) when is_list(modules) do
+    modules
+    |> Enum.flat_map(& &1.lectures)
+    |> Enum.map(& &1.duration_seconds)
+    |> Enum.sum()
+  end
+
+  defp preload_outline(%Course{} = course) do
+    modules_query = from(module in CourseModule, order_by: [asc: module.position])
+    lectures_query = from(lecture in Lecture, order_by: [asc: lecture.position])
+
+    Repo.preload(course, modules: {modules_query, lectures: lectures_query})
+  end
 
   @doc """
   Creates a course.
@@ -102,8 +167,6 @@ defmodule Kubuni.Catalog do
     Course.changeset(course, attrs)
   end
 
-  alias Kubuni.Catalog.CourseModule
-
   @doc """
   Returns the list of modules.
 
@@ -114,7 +177,9 @@ defmodule Kubuni.Catalog do
 
   """
   def list_modules do
-    Repo.all(CourseModule)
+    CourseModule
+    |> order_by([module], asc: module.course_id, asc: module.position)
+    |> Repo.all()
   end
 
   @doc """
@@ -198,8 +263,6 @@ defmodule Kubuni.Catalog do
     CourseModule.changeset(course_module, attrs)
   end
 
-  alias Kubuni.Catalog.Lecture
-
   @doc """
   Returns the list of lectures.
 
@@ -210,7 +273,9 @@ defmodule Kubuni.Catalog do
 
   """
   def list_lectures do
-    Repo.all(Lecture)
+    Lecture
+    |> order_by([lecture], asc: lecture.module_id, asc: lecture.position)
+    |> Repo.all()
   end
 
   @doc """

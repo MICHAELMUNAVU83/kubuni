@@ -38,6 +38,49 @@ defmodule Kubuni.Accounts.UserNotifier do
   end
 
   @doc """
+  Welcomes a user after their account is confirmed.
+  """
+  def deliver_welcome(user) do
+    deliver(user.email, "Welcome to Kubuni Business Institute", """
+
+    Hi #{user.name},
+
+    Welcome to Kubuni Business Institute. Your account is confirmed and you
+    can now explore our practical courses for technology professionals.
+
+    Start learning: #{KubuniWeb.Endpoint.url()}/courses
+
+    — The Kubuni team
+    """)
+  end
+
+  @doc """
+  Tells a learner that a generated certificate is ready to download.
+  """
+  def deliver_certificate_issued(certificate) do
+    title =
+      case certificate.type do
+        :module -> certificate.module.title
+        :course -> certificate.course.title
+      end
+
+    url = "#{KubuniWeb.Endpoint.url()}/certificates/#{certificate.id}/download"
+
+    deliver(certificate.user.email, "Your Kubuni certificate is ready", """
+
+    Hi #{certificate.user.name},
+
+    Your certificate for "#{title}" is ready.
+
+    Download it securely: #{url}
+
+    This link requires you to sign in to your Kubuni account.
+
+    — The Kubuni team
+    """)
+  end
+
+  @doc """
   Deliver instructions to reset a user password.
   """
   def deliver_reset_password_instructions(user, url) do

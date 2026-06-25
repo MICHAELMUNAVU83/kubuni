@@ -127,6 +127,9 @@ defmodule KubuniWeb.UserAuth do
     * `:redirect_if_user_is_authenticated` - Authenticates the user from the session.
       Redirects to signed_in_path if there's a logged user.
 
+    * `:ensure_admin` - Authenticates the user and only continues for the
+      `admin` role.
+
   ## Examples
 
   Use the `on_mount` lifecycle macro in LiveViews to mount or authenticate
@@ -174,6 +177,31 @@ defmodule KubuniWeb.UserAuth do
     end
   end
 
+  def on_mount(:ensure_admin, _params, session, socket) do
+    socket = mount_current_user(socket, session)
+
+    case socket.assigns.current_user do
+      %{role: :admin} ->
+        {:cont, socket}
+
+      nil ->
+        socket =
+          socket
+          |> Phoenix.LiveView.put_flash(:error, "You must log in to access this page.")
+          |> Phoenix.LiveView.redirect(to: ~p"/users/log_in")
+
+        {:halt, socket}
+
+      _user ->
+        socket =
+          socket
+          |> Phoenix.LiveView.put_flash(:error, "You do not have permission to access this page.")
+          |> Phoenix.LiveView.redirect(to: ~p"/")
+
+        {:halt, socket}
+    end
+  end
+
   defp mount_current_user(socket, session) do
     Phoenix.Component.assign_new(socket, :current_user, fn ->
       if user_token = session["user_token"] do
@@ -210,6 +238,29 @@ defmodule KubuniWeb.UserAuth do
       |> maybe_store_return_to()
       |> redirect(to: ~p"/users/log_in")
       |> halt()
+    end
+  end
+
+  @doc """
+  Restricts controller routes to authenticated administrators.
+  """
+  def require_admin(conn, _opts) do
+    case conn.assigns[:current_user] do
+      %{role: :admin} ->
+        conn
+
+      nil ->
+        conn
+        |> put_flash(:error, "You must log in to access this page.")
+        |> maybe_store_return_to()
+        |> redirect(to: ~p"/users/log_in")
+        |> halt()
+
+      _user ->
+        conn
+        |> put_flash(:error, "You do not have permission to access this page.")
+        |> redirect(to: ~p"/")
+        |> halt()
     end
   end
 

@@ -47,6 +47,19 @@ defmodule Kubuni.Accounts.User do
     |> validate_password(opts)
   end
 
+  @doc """
+  Changes a user's role through an explicit administrative code path.
+
+  Registration deliberately does not cast `role`, so public sign-up can never
+  promote a learner to an administrator.
+  """
+  def role_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:role])
+    |> validate_required([:role])
+    |> check_constraint(:role, name: :users_role_must_be_valid)
+  end
+
   defp validate_name(changeset) do
     changeset
     |> validate_required([:name])
@@ -60,6 +73,7 @@ defmodule Kubuni.Accounts.User do
     |> validate_format(:phone, ~r/^2547\d{8}$/,
       message: "must be a valid Kenyan mobile number (2547XXXXXXXX)"
     )
+    |> check_constraint(:phone, name: :users_phone_must_be_normalized)
     |> maybe_validate_unique_phone(opts)
   end
 

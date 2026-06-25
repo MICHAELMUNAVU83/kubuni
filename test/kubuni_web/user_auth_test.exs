@@ -269,4 +269,49 @@ defmodule KubuniWeb.UserAuthTest do
       refute conn.status
     end
   end
+
+  describe "administrator authorization" do
+    test "require_admin/2 allows administrators", %{conn: conn, user: user} do
+      {:ok, admin} = Accounts.update_user_role(user, :admin)
+
+      conn = conn |> assign(:current_user, admin) |> UserAuth.require_admin([])
+
+      refute conn.halted
+      refute conn.status
+    end
+
+    test "require_admin/2 rejects learners", %{conn: conn, user: user} do
+      conn =
+        conn
+        |> fetch_flash()
+        |> assign(:current_user, user)
+        |> UserAuth.require_admin([])
+
+      assert conn.halted
+      assert redirected_to(conn) == ~p"/"
+    end
+
+    test "on_mount :ensure_admin allows administrators", %{conn: conn, user: user} do
+      {:ok, admin} = Accounts.update_user_role(user, :admin)
+      user_token = Accounts.generate_user_session_token(admin)
+      session = conn |> put_session(:user_token, user_token) |> get_session()
+
+      assert {:cont, socket} =
+               UserAuth.on_mount(:ensure_admin, %{}, session, %LiveView.Socket{})
+
+      assert socket.assigns.current_user.role == :admin
+    end
+
+    test "on_mount :ensure_admin rejects learners", %{conn: conn, user: user} do
+      user_token = Accounts.generate_user_session_token(user)
+      session = conn |> put_session(:user_token, user_token) |> get_session()
+
+      socket = %LiveView.Socket{
+        endpoint: KubuniWeb.Endpoint,
+        assigns: %{__changed__: %{}, flash: %{}}
+      }
+
+      assert {:halt, _socket} = UserAuth.on_mount(:ensure_admin, %{}, session, socket)
+    end
+  end
 end

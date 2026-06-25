@@ -14,16 +14,28 @@ defmodule Kubuni.PaymentsFixtures do
   Generate a payment.
   """
   def payment_fixture(attrs \\ %{}) do
+    attrs = Map.new(attrs)
+    user = Kubuni.AccountsFixtures.user_fixture()
+    course = Kubuni.CatalogFixtures.course_fixture(price_minor: 4_200)
+
+    enrollment =
+      Kubuni.EnrollmentsFixtures.enrollment_fixture(user_id: user.id, course_id: course.id)
+
+    status = Map.get(attrs, :status, :pending)
+
     {:ok, payment} =
       attrs
+      |> Map.put_new(:user_id, user.id)
+      |> Map.put_new(:course_id, course.id)
+      |> Map.put_new(:enrollment_id, enrollment.id)
+      |> Map.put_new(:paid_at, if(status == :successful, do: ~U[2026-06-24 10:02:00Z]))
       |> Enum.into(%{
-        amount_minor: 42,
-        currency: "some currency",
-        paid_at: ~U[2026-06-24 10:02:00Z],
-        provider: :mpesa,
+        amount_minor: 4_200,
+        currency: "KES",
+        provider: :paystack,
         provider_reference: unique_payment_provider_reference(),
         raw_payload: %{},
-        status: :pending
+        status: status
       })
       |> Kubuni.Payments.create_payment()
 

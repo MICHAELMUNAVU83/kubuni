@@ -7,7 +7,7 @@ defmodule Kubuni.CatalogFixtures do
   @doc """
   Generate a unique course slug.
   """
-  def unique_course_slug, do: "some slug#{System.unique_integer([:positive])}"
+  def unique_course_slug, do: "course-#{System.unique_integer([:positive])}"
 
   @doc """
   Generate a course.
@@ -16,7 +16,7 @@ defmodule Kubuni.CatalogFixtures do
     {:ok, course} =
       attrs
       |> Enum.into(%{
-        currency: "some currency",
+        currency: "KES",
         description: "some description",
         position: 42,
         price_minor: 42,
@@ -35,8 +35,12 @@ defmodule Kubuni.CatalogFixtures do
   Generate a course_module.
   """
   def course_module_fixture(attrs \\ %{}) do
+    attrs = Map.new(attrs)
+    course_id = Map.get_lazy(attrs, :course_id, fn -> course_fixture().id end)
+
     {:ok, course_module} =
       attrs
+      |> Map.put(:course_id, course_id)
       |> Enum.into(%{
         description: "some description",
         position: 42,
@@ -51,8 +55,12 @@ defmodule Kubuni.CatalogFixtures do
   Generate a lecture.
   """
   def lecture_fixture(attrs \\ %{}) do
+    attrs = Map.new(attrs)
+    module_id = Map.get_lazy(attrs, :module_id, fn -> course_module_fixture().id end)
+
     {:ok, lecture} =
       attrs
+      |> Map.put(:module_id, module_id)
       |> Enum.into(%{
         description: "some description",
         duration_seconds: 42,

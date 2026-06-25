@@ -9,7 +9,30 @@ import Config
 
 config :kubuni,
   ecto_repos: [Kubuni.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  payment_provider: Kubuni.Paystack,
+  media_provider: Kubuni.Media.Mux,
+  certificate_renderer: Kubuni.Certificates.Renderers.ChromicPDF,
+  certificate_storage: Kubuni.Certificates.Storage.R2,
+  paystack_api_url: "https://api.paystack.co",
+  paystack_callback_url: "http://localhost:4000/payments/paystack/callback",
+  mux_api_url: "https://api.mux.com",
+  mux_cors_origin: "http://localhost:4000"
+
+config :kubuni, Oban,
+  repo: Kubuni.Repo,
+  queues: [payments: 10, certificates: 3, mailers: 5, default: 10],
+  plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"* * * * *", Kubuni.Payments.Workers.ReconcilePendingPayments}
+     ]}
+  ]
+
+config :kubuni, ChromicPDF,
+  disable_scripts: true,
+  offline: true,
+  session_pool: [size: 2, timeout: 15_000]
 
 # Configures the endpoint
 config :kubuni, KubuniWeb.Endpoint,

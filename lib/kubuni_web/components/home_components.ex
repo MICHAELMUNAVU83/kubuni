@@ -8,7 +8,7 @@ defmodule KubuniWeb.HomeComponents do
       <div class="mx-auto max-w-container px-5 lg:px-8">
         <nav class="flex items-center justify-between gap-4 py-6">
           <!-- logo -->
-          <a href="#" class="flex items-center gap-2.5">
+          <a href="/" class="flex items-center gap-2.5">
             <span class="grid h-9 w-9 place-items-center rounded-[10px] bg-primary">
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none">
                 <path
@@ -117,7 +117,7 @@ defmodule KubuniWeb.HomeComponents do
                 </a>
               </div>
             </div>
-            <a href="#courses" class="py-2 font-medium text-dark transition hover:text-primary">
+            <a href="/courses" class="py-2 font-medium text-dark transition hover:text-primary">
               Courses
             </a>
             <a href="#mentors" class="py-2 font-medium text-dark transition hover:text-primary">
@@ -188,7 +188,7 @@ defmodule KubuniWeb.HomeComponents do
               Explore courses that expand your digital abilities, covering key areas like data analytics, design, and marketing for career growth and innovation.
             </p>
             <a
-              href="#courses"
+              href="/courses"
               class="group mt-8 inline-flex items-center gap-2 rounded-full bg-dark py-1.5 pl-6 pr-1.5 font-medium text-white transition hover:bg-primary"
             >
               Explore Courses
@@ -300,7 +300,7 @@ defmodule KubuniWeb.HomeComponents do
         <div class="mt-14 grid gap-7 md:grid-cols-2 lg:grid-cols-3">
           <!-- card -->
           <a
-            href="#"
+            href="/courses"
             class="group block overflow-hidden rounded-3xl border border-black/5 bg-white transition hover:shadow-xl"
           >
             <div class="overflow-hidden">
@@ -446,7 +446,7 @@ defmodule KubuniWeb.HomeComponents do
         </div>
         <div class="mt-12 text-center">
           <a
-            href="#"
+            href="/courses"
             class="group inline-flex items-center gap-2 rounded-full border border-dark py-1.5 pl-6 pr-1.5 font-medium text-dark transition hover:bg-dark hover:text-white"
           >
             Explore All Courses
@@ -1518,7 +1518,7 @@ defmodule KubuniWeb.HomeComponents do
 
           <div class="mt-12 text-center">
             <a
-              href="#"
+              href="/courses"
               class="group inline-flex items-center gap-2 rounded-full border border-dark py-1.5 pl-6 pr-1.5 font-medium text-dark transition hover:bg-dark hover:text-white"
             >
               View All Courses

@@ -6,6 +6,9 @@ defmodule Kubuni.Enrollments do
   import Ecto.Query, warn: false
   alias Kubuni.Repo
 
+  alias Kubuni.Accounts.User
+  alias Kubuni.Catalog
+  alias Kubuni.Catalog.{Course, Lecture}
   alias Kubuni.Enrollments.Enrollment
 
   @doc """
@@ -19,6 +22,21 @@ defmodule Kubuni.Enrollments do
   """
   def list_enrollments do
     Repo.all(Enrollment)
+  end
+
+  @doc """
+  Lists a learner's active enrollments with the ordered course outline needed
+  by learner-facing surfaces.
+
+  Pending enrollments are intentionally excluded: they represent checkout
+  attempts, not courses the learner may access.
+  """
+  def list_active_for_user(%User{id: user_id}) do
+    Enrollment
+    |> where([enrollment], enrollment.user_id == ^user_id and enrollment.status == :active)
+    |> order_by([enrollment], desc: enrollment.activated_at, desc: enrollment.id)
+    |> preload(course: [modules: :lectures])
+    |> Repo.all()
   end
 
   @doc """
@@ -36,6 +54,93 @@ defmodule Kubuni.Enrollments do
 
   """
   def get_enrollment!(id), do: Repo.get!(Enrollment, id)
+
+  def get_enrollment(user_or_id, course_or_id) do
+    Repo.get_by(Enrollment,
+      user_id: id_for(user_or_id),
+      course_id: id_for(course_or_id)
+    )
+  end
+
+  def enrolled?(user_or_id, course_or_id) do
+    not is_nil(get_enrollment(user_or_id, course_or_id))
+  end
+
+  def active_enrollment(user_or_id, course_or_id) do
+    Repo.get_by(Enrollment,
+      user_id: id_for(user_or_id),
+      course_id: id_for(course_or_id),
+      status: :active
+    )
+  end
+
+  def can_access_course?(nil, _course), do: false
+
+  def can_access_course?(user_or_id, course_or_id) do
+    not is_nil(active_enrollment(user_or_id, course_or_id))
+  end
+
+  def can_access_lecture?(nil, _lecture), do: false
+
+  def can_access_lecture?(user_or_id, %Lecture{} = lecture) do
+    course_id =
+      from(module in Kubuni.Catalog.CourseModule,
+        where: module.id == ^lecture.module_id,
+        select: module.course_id
+      )
+      |> Repo.one()
+
+    can_access_course?(user_or_id, course_id)
+  end
+
+  def can_access_lecture?(user_or_id, lecture_id) do
+    lecture_id
+    |> Catalog.get_lecture!()
+    |> then(&can_access_lecture?(user_or_id, &1))
+  end
+
+  def authorize_course(user, course) do
+    if can_access_course?(user, course), do: {:ok, course}, else: {:error, :forbidden}
+  end
+
+  def authorize_lecture(user, lecture_or_id) do
+    lecture =
+      case lecture_or_id do
+        %Lecture{} = lecture -> lecture
+        id -> Catalog.get_lecture!(id)
+      end
+
+    if can_access_lecture?(user, lecture), do: {:ok, lecture}, else: {:error, :forbidden}
+  end
+
+  def create_pending_enrollment(%User{id: user_id}, %Course{id: course_id}) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    %Enrollment{}
+    |> Enrollment.changeset(%{
+      user_id: user_id,
+      course_id: course_id,
+      status: :pending,
+      enrolled_at: now
+    })
+    |> Repo.insert(
+      on_conflict: :nothing,
+      conflict_target: [:user_id, :course_id]
+    )
+    |> case do
+      {:ok, %Enrollment{id: nil}} -> {:ok, get_enrollment(user_id, course_id)}
+      result -> result
+    end
+  end
+
+  def activate_enrollment(%Enrollment{status: :active} = enrollment), do: {:ok, enrollment}
+
+  def activate_enrollment(%Enrollment{} = enrollment) do
+    update_enrollment(enrollment, %{
+      status: :active,
+      activated_at: DateTime.utc_now() |> DateTime.truncate(:second)
+    })
+  end
 
   @doc """
   Creates a enrollment.
@@ -101,4 +206,7 @@ defmodule Kubuni.Enrollments do
   def change_enrollment(%Enrollment{} = enrollment, attrs \\ %{}) do
     Enrollment.changeset(enrollment, attrs)
   end
+
+  defp id_for(%{id: id}), do: id
+  defp id_for(id), do: id
 end

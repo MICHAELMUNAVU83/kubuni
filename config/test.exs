@@ -26,6 +26,16 @@ config :kubuni, KubuniWeb.Endpoint,
 # In test we don't send emails
 config :kubuni, Kubuni.Mailer, adapter: Swoosh.Adapters.Test
 
+config :kubuni,
+  payment_provider: Kubuni.Payments.ProviderMock,
+  media_provider: Kubuni.MediaProviderMock,
+  certificate_renderer: Kubuni.CertificateRendererMock,
+  certificate_storage: Kubuni.CertificateStorageMock,
+  paystack_secret_key: "test_paystack_secret",
+  paystack_callback_url: "http://www.example.com/payments/paystack/callback"
+
+config :kubuni, Oban, testing: :manual, queues: false, plugins: false
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 

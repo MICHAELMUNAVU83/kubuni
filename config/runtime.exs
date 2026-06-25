@@ -20,6 +20,56 @@ if System.get_env("PHX_SERVER") do
   config :kubuni, KubuniWeb.Endpoint, server: true
 end
 
+if paystack_secret_key = System.get_env("PAYSTACK_SECRET_KEY") do
+  config :kubuni, paystack_secret_key: paystack_secret_key
+end
+
+if paystack_api_url = System.get_env("PAYSTACK_API_URL") do
+  config :kubuni, paystack_api_url: paystack_api_url
+end
+
+if paystack_callback_url = System.get_env("PAYSTACK_CALLBACK_URL") do
+  config :kubuni, paystack_callback_url: paystack_callback_url
+end
+
+for {env_name, config_key} <- [
+      {"MUX_TOKEN_ID", :mux_token_id},
+      {"MUX_TOKEN_SECRET", :mux_token_secret},
+      {"MUX_SIGNING_KEY_ID", :mux_signing_key_id},
+      {"MUX_SIGNING_PRIVATE_KEY", :mux_signing_private_key},
+      {"MUX_API_URL", :mux_api_url},
+      {"MUX_CORS_ORIGIN", :mux_cors_origin}
+    ],
+    value = System.get_env(env_name),
+    value not in [nil, ""] do
+  config :kubuni, config_key, value
+end
+
+for {env_name, config_key} <- [
+      {"R2_BUCKET", :r2_bucket},
+      {"R2_ACCESS_KEY_ID", :r2_access_key_id},
+      {"R2_SECRET_ACCESS_KEY", :r2_secret_access_key}
+    ],
+    value = System.get_env(env_name),
+    value not in [nil, ""] do
+  config :kubuni, config_key, value
+end
+
+if r2_endpoint = System.get_env("R2_ENDPOINT") do
+  uri = URI.parse(r2_endpoint)
+
+  config :ex_aws,
+    access_key_id: System.get_env("R2_ACCESS_KEY_ID"),
+    secret_access_key: System.get_env("R2_SECRET_ACCESS_KEY"),
+    region: "auto"
+
+  config :ex_aws, :s3,
+    scheme: "#{uri.scheme || "https"}://",
+    host: uri.host,
+    port: uri.port,
+    region: "auto"
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
@@ -64,6 +114,40 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base
+
+  config :kubuni,
+    paystack_secret_key:
+      "sk_test_7267bf7b9b38cd9798c6328f7e0b3cc5a264f4aa" ||
+        raise("environment variable PAYSTACK_SECRET_KEY is missing"),
+    paystack_callback_url:
+      System.get_env("PAYSTACK_CALLBACK_URL") ||
+        "https://#{host}/payments/paystack/callback",
+    mux_token_id:
+      System.get_env("MUX_TOKEN_ID") ||
+        raise("environment variable MUX_TOKEN_ID is missing"),
+    mux_token_secret:
+      System.get_env("MUX_TOKEN_SECRET") ||
+        raise("environment variable MUX_TOKEN_SECRET is missing"),
+    mux_signing_key_id:
+      System.get_env("MUX_SIGNING_KEY_ID") ||
+        raise("environment variable MUX_SIGNING_KEY_ID is missing"),
+    mux_signing_private_key:
+      System.get_env("MUX_SIGNING_PRIVATE_KEY") ||
+        raise("environment variable MUX_SIGNING_PRIVATE_KEY is missing"),
+    mux_cors_origin: System.get_env("MUX_CORS_ORIGIN") || "https://#{host}",
+    r2_bucket:
+      System.get_env("R2_BUCKET") ||
+        raise("environment variable R2_BUCKET is missing"),
+    r2_access_key_id:
+      System.get_env("R2_ACCESS_KEY_ID") ||
+        raise("environment variable R2_ACCESS_KEY_ID is missing"),
+    r2_secret_access_key:
+      System.get_env("R2_SECRET_ACCESS_KEY") ||
+        raise("environment variable R2_SECRET_ACCESS_KEY is missing")
+
+  if is_nil(System.get_env("R2_ENDPOINT")) do
+    raise "environment variable R2_ENDPOINT is missing"
+  end
 
   # ## SSL Support
   #

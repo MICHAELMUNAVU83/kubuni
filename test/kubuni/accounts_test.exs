@@ -4,6 +4,7 @@ defmodule Kubuni.AccountsTest do
   alias Kubuni.Accounts
 
   import Kubuni.AccountsFixtures
+  import Swoosh.TestAssertions
   alias Kubuni.Accounts.{User, UserToken}
 
   describe "get_user_by_email/1" do
@@ -49,20 +50,29 @@ defmodule Kubuni.AccountsTest do
   end
 
   describe "register_user/1" do
-    test "requires email and password to be set" do
+    test "requires identity, phone, email and password to be set" do
       {:error, changeset} = Accounts.register_user(%{})
 
       assert %{
                password: ["can't be blank"],
-               email: ["can't be blank"]
+               email: ["can't be blank"],
+               name: ["can't be blank"],
+               phone: ["can't be blank"]
              } = errors_on(changeset)
     end
 
     test "validates email and password when given" do
-      {:error, changeset} = Accounts.register_user(%{email: "not valid", password: "not valid"})
+      {:error, changeset} =
+        Accounts.register_user(%{
+          name: "Test User",
+          phone: "not a phone",
+          email: "not valid",
+          password: "not valid"
+        })
 
       assert %{
                email: ["must have the @ sign and no spaces"],
+               phone: ["must be a valid Kenyan mobile number (2547XXXXXXXX)"],
                password: ["should be at least 12 character(s)"]
              } = errors_on(changeset)
     end
@@ -91,13 +101,27 @@ defmodule Kubuni.AccountsTest do
       assert is_binary(user.hashed_password)
       assert is_nil(user.confirmed_at)
       assert is_nil(user.password)
+      assert user.role == :learner
+      assert String.starts_with?(user.phone, "2547")
+    end
+
+    test "normalises common Kenyan phone formats" do
+      {:ok, user} =
+        Accounts.register_user(valid_user_attributes(phone: "0712 345-678"))
+
+      assert user.phone == "254712345678"
+    end
+
+    test "does not allow registration to set an admin role" do
+      {:ok, user} = Accounts.register_user(valid_user_attributes(role: :admin))
+      assert user.role == :learner
     end
   end
 
   describe "change_user_registration/2" do
     test "returns a changeset" do
       assert %Ecto.Changeset{} = changeset = Accounts.change_user_registration(%User{})
-      assert changeset.required == [:password, :email]
+      assert Enum.sort(changeset.required) == Enum.sort([:name, :phone, :password, :email])
     end
 
     test "allows fields to be set" do
@@ -394,11 +418,13 @@ defmodule Kubuni.AccountsTest do
     end
 
     test "confirms the email with a valid token", %{user: user, token: token} do
+      assert_email_sent(subject: "Confirmation instructions")
       assert {:ok, confirmed_user} = Accounts.confirm_user(token)
       assert confirmed_user.confirmed_at
       assert confirmed_user.confirmed_at != user.confirmed_at
       assert Repo.get!(User, user.id).confirmed_at
       refute Repo.get_by(UserToken, user_id: user.id)
+      assert_email_sent(subject: "Welcome to Kubuni Business Institute")
     end
 
     test "does not confirm with invalid token", %{user: user} do

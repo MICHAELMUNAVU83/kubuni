@@ -8,12 +8,25 @@ defmodule Kubuni.EnrollmentsFixtures do
   Generate a enrollment.
   """
   def enrollment_fixture(attrs \\ %{}) do
+    attrs = Map.new(attrs)
+    user_id = Map.get_lazy(attrs, :user_id, fn -> Kubuni.AccountsFixtures.user_fixture().id end)
+
+    course_id =
+      Map.get_lazy(attrs, :course_id, fn -> Kubuni.CatalogFixtures.course_fixture().id end)
+
+    status = Map.get(attrs, :status, :pending)
+
     {:ok, enrollment} =
       attrs
+      |> Map.put(:user_id, user_id)
+      |> Map.put(:course_id, course_id)
+      |> Map.put_new(
+        :activated_at,
+        if(status == :active, do: ~U[2026-06-24 10:02:00Z], else: nil)
+      )
       |> Enum.into(%{
-        activated_at: ~U[2026-06-24 10:02:00Z],
         enrolled_at: ~U[2026-06-24 10:02:00Z],
-        status: :pending
+        status: status
       })
       |> Kubuni.Enrollments.create_enrollment()
 

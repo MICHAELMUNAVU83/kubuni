@@ -10,6 +10,8 @@ defmodule Kubuni.Application do
     children = [
       KubuniWeb.Telemetry,
       Kubuni.Repo,
+      {Oban, Application.fetch_env!(:kubuni, Oban)},
+      chromic_pdf_child(),
       {DNSCluster, query: Application.get_env(:kubuni, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Kubuni.PubSub},
       # Start the Finch HTTP client for sending emails
@@ -23,7 +25,14 @@ defmodule Kubuni.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Kubuni.Supervisor]
-    Supervisor.start_link(children, opts)
+    Supervisor.start_link(Enum.reject(children, &is_nil/1), opts)
+  end
+
+  defp chromic_pdf_child do
+    if Application.get_env(:kubuni, :certificate_renderer) ==
+         Kubuni.Certificates.Renderers.ChromicPDF do
+      {ChromicPDF, Application.get_env(:kubuni, ChromicPDF, [])}
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration
