@@ -1,6 +1,8 @@
 defmodule KubuniWeb.CatalogLive.Index do
   use KubuniWeb, :live_view
 
+  import KubuniWeb.HomeComponents
+
   alias Kubuni.Catalog
 
   @impl true
@@ -15,25 +17,7 @@ defmodule KubuniWeb.CatalogLive.Index do
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-soft text-dark">
-      <header class="border-b border-black/5 bg-white">
-        <div class="mx-auto flex max-w-container items-center justify-between px-5 py-5 lg:px-8">
-          <.link navigate={~p"/"} class="flex items-center gap-3 font-bold text-dark">
-            <span class="grid h-10 w-10 place-items-center rounded-[10px] bg-primary text-white">
-              K
-            </span>
-            <span>Kubuni</span>
-          </.link>
-          <nav class="flex items-center gap-5 text-sm font-medium">
-            <.link navigate={~p"/courses"} class="text-primary">Courses</.link>
-            <.link
-              navigate={if @current_user, do: ~p"/dashboard", else: ~p"/users/log_in"}
-              class="text-dark transition hover:text-primary"
-            >
-              {if @current_user, do: "My learning", else: "Log in"}
-            </.link>
-          </nav>
-        </div>
-      </header>
+      <.home_header current_user={@current_user} />
 
       <main>
         <section class="bg-gradient-to-b from-mint via-white to-soft py-20 lg:py-28">

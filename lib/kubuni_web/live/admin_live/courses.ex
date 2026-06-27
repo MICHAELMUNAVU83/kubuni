@@ -154,10 +154,7 @@ defmodule KubuniWeb.AdminLive.Courses do
           </article>
         </div>
 
-        <div
-          :if={@rows == []}
-          class="rounded-3xl border border-black/5 bg-white p-12 text-center"
-        >
+        <div :if={@rows == []} class="rounded-3xl border border-black/5 bg-white p-12 text-center">
           <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-mint text-primary">
             <.icon name="hero-academic-cap" class="h-7 w-7" />
           </span>

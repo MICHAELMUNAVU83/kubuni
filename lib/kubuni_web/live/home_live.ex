@@ -2,24 +2,28 @@ defmodule KubuniWeb.HomeLive do
   use KubuniWeb, :live_view
 
   import KubuniWeb.HomeComponents
+  alias Kubuni.Accounts
+  alias Kubuni.Catalog
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(_params, session, socket) do
     {:ok,
      socket
-     |> assign(:page_title, "Kubuni Business Institute")}
+     |> assign(:page_title, "Kubuni Business Institute")
+     |> assign(:current_user, current_user(session))
+     |> assign(:courses, Catalog.list_published_courses())}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen p-4 bg-slate-50 text-slate-900">
-      <.home_header />
+    <div class="min-h-screen  bg-slate-50 text-slate-900">
+      <.home_header current_user={@current_user} />
       <main>
         <.hero />
-        <.top_courses_section />
+        <.top_courses_section courses={@courses} />
         <.why_choose_us />
-        <.popular_courses />
+        <.popular_courses courses={@courses} />
         <.digital_skills />
         <.mentors />
         <.testimonials />
@@ -31,4 +35,10 @@ defmodule KubuniWeb.HomeLive do
     </div>
     """
   end
+
+  defp current_user(%{"user_token" => user_token}) do
+    Accounts.get_user_by_session_token(user_token)
+  end
+
+  defp current_user(_session), do: nil
 end

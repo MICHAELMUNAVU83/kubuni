@@ -37,6 +37,16 @@ defmodule Kubuni.PaymentsTest do
     refute Map.has_key?(result.payment.raw_payload["initialization"], "card")
   end
 
+  test "checkout captures and normalises the M-Pesa number for the payment prompt" do
+    user = user_fixture()
+    course = course_fixture(price_minor: 80_000, currency: "KES")
+
+    {:ok, %{payment: payment}} =
+      Payments.create_pending_checkout(user, course, "0712 345-678")
+
+    assert payment.phone == "254712345678"
+  end
+
   test "verified success atomically completes payment and activates enrollment" do
     user = user_fixture()
     course = course_fixture(price_minor: 80_000, currency: "KES")

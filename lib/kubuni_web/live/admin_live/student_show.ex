@@ -28,7 +28,10 @@ defmodule KubuniWeb.AdminLive.StudentShow do
     ~H"""
     <.admin_layout active={:students} current_user={@current_user}>
       <div class="mx-auto max-w-container space-y-8 px-5 py-10 lg:px-10">
-        <.link navigate={~p"/admin/students"} class="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary">
+        <.link
+          navigate={~p"/admin/students"}
+          class="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"
+        >
           <.icon name="hero-arrow-left-mini" class="h-4 w-4" /> Back to students
         </.link>
 
@@ -48,7 +51,11 @@ defmodule KubuniWeb.AdminLive.StudentShow do
         </div>
 
         <div class="grid gap-5 sm:grid-cols-3">
-          <.stat_card label="Total spent" value={Payments.format_minor(@spent_minor)} icon="hero-banknotes" />
+          <.stat_card
+            label="Total spent"
+            value={Payments.format_minor(@spent_minor)}
+            icon="hero-banknotes"
+          />
           <.stat_card label="Active courses" value={length(@enrollments)} icon="hero-academic-cap" />
           <.stat_card
             label="Email confirmed"
@@ -89,8 +96,12 @@ defmodule KubuniWeb.AdminLive.StudentShow do
               <div :for={payment <- @payments} class="py-3 first:pt-0 last:pb-0">
                 <div class="flex items-center justify-between gap-4">
                   <div class="min-w-0">
-                    <p class="truncate font-medium text-dark">{payment.course && payment.course.title}</p>
-                    <p class="text-xs text-muted">{format_date(payment.inserted_at)} · {payment.provider_reference}</p>
+                    <p class="truncate font-medium text-dark">
+                      {payment.course && payment.course.title}
+                    </p>
+                    <p class="text-xs text-muted">
+                      {format_date(payment.inserted_at)} · {payment.provider_reference}
+                    </p>
                   </div>
                   <div class="shrink-0 text-right">
                     <p class="font-semibold text-dark">{Payments.format_amount(payment)}</p>

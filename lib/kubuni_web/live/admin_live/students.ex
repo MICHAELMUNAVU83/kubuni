@@ -67,14 +67,19 @@ defmodule KubuniWeb.AdminLive.Students do
                 <td class="px-6 py-4 text-body">{row.user.phone || "—"}</td>
                 <td class="px-6 py-4"><.status_badge status={row.user.role} /></td>
                 <td class="px-6 py-4 text-body">{row.courses}</td>
-                <td class="px-6 py-4 font-semibold text-dark">{Payments.format_minor(row.spent_minor)}</td>
+                <td class="px-6 py-4 font-semibold text-dark">
+                  {Payments.format_minor(row.spent_minor)}
+                </td>
                 <td class="px-6 py-4 text-body">{format_date(row.user.inserted_at)}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div :if={@rows == []} class="rounded-3xl border border-black/5 bg-white p-12 text-center text-body">
+        <div
+          :if={@rows == []}
+          class="rounded-3xl border border-black/5 bg-white p-12 text-center text-body"
+        >
           No students have registered yet.
         </div>
       </div>

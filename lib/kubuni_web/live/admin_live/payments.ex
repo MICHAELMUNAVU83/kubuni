@@ -25,7 +25,11 @@ defmodule KubuniWeb.AdminLive.Payments do
         </.page_header>
 
         <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          <.stat_card label="Total revenue" value={Payments.format_minor(@total_revenue_minor)} icon="hero-banknotes" />
+          <.stat_card
+            label="Total revenue"
+            value={Payments.format_minor(@total_revenue_minor)}
+            icon="hero-banknotes"
+          />
           <.stat_card label="Successful" value={@successful} icon="hero-check-circle" />
           <.stat_card label="Pending" value={@pending} icon="hero-clock" />
           <.stat_card label="Failed" value={@failed} icon="hero-x-circle" />
@@ -67,7 +71,10 @@ defmodule KubuniWeb.AdminLive.Payments do
           </table>
         </div>
 
-        <div :if={@payments == []} class="rounded-3xl border border-black/5 bg-white p-12 text-center text-body">
+        <div
+          :if={@payments == []}
+          class="rounded-3xl border border-black/5 bg-white p-12 text-center text-body"
+        >
           No payments have been recorded yet.
         </div>
       </div>

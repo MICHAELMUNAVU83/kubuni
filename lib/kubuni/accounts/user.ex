@@ -40,9 +40,8 @@ defmodule Kubuni.Accounts.User do
   """
   def registration_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:name, :email, :phone, :password])
+    |> cast(attrs, [:name, :email, :password])
     |> validate_name()
-    |> validate_phone(opts)
     |> validate_email(opts)
     |> validate_password(opts)
   end
@@ -66,17 +65,6 @@ defmodule Kubuni.Accounts.User do
     |> validate_length(:name, min: 2, max: 160)
   end
 
-  defp validate_phone(changeset, opts) do
-    changeset
-    |> validate_required([:phone])
-    |> update_change(:phone, &normalize_phone/1)
-    |> validate_format(:phone, ~r/^2547\d{8}$/,
-      message: "must be a valid Kenyan mobile number (2547XXXXXXXX)"
-    )
-    |> check_constraint(:phone, name: :users_phone_must_be_normalized)
-    |> maybe_validate_unique_phone(opts)
-  end
-
   @doc """
   Normalises a Kenyan MSISDN to the `2547XXXXXXXX` form used for M-Pesa.
 
@@ -95,14 +83,19 @@ defmodule Kubuni.Accounts.User do
 
   def normalize_phone(phone), do: phone
 
-  defp maybe_validate_unique_phone(changeset, opts) do
-    if Keyword.get(opts, :validate_phone, true) do
-      changeset
-      |> unsafe_validate_unique(:phone, Kubuni.Repo)
-      |> unique_constraint(:phone)
-    else
-      changeset
-    end
+  @doc """
+  Validates that a phone string is a normalised Kenyan M-Pesa number.
+
+  Shared by the checkout flow, which collects the number used for the
+  payment prompt.
+  """
+  def validate_mpesa_phone(changeset, field) do
+    changeset
+    |> update_change(field, &normalize_phone/1)
+    |> validate_required([field])
+    |> validate_format(field, ~r/^2547\d{8}$/,
+      message: "must be a valid Kenyan mobile number (07XXXXXXXX)"
+    )
   end
 
   defp validate_email(changeset, opts) do
@@ -116,7 +109,7 @@ defmodule Kubuni.Accounts.User do
   defp validate_password(changeset, opts) do
     changeset
     |> validate_required([:password])
-    |> validate_length(:password, min: 12, max: 72)
+    |> validate_length(:password, min: 6, max: 72)
     # Examples of additional password validation:
     # |> validate_format(:password, ~r/[a-z]/, message: "at least one lower case character")
     # |> validate_format(:password, ~r/[A-Z]/, message: "at least one upper case character")

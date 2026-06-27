@@ -14,6 +14,7 @@ defmodule KubuniWeb.AdminLive.CourseShow do
      |> assign(:course_module, nil)
      |> assign(:lecture, nil)
      |> assign(:form_title, nil)
+     |> assign(:active_tab, :curriculum)
      |> load_course(id)}
   end
 
@@ -71,6 +72,11 @@ defmodule KubuniWeb.AdminLive.CourseShow do
 
   def handle_event("close_modal", _params, socket) do
     {:noreply, close_modal(socket)}
+  end
+
+  def handle_event("switch_tab", %{"tab" => tab}, socket)
+      when tab in ["curriculum", "students"] do
+    {:noreply, assign(socket, :active_tab, String.to_existing_atom(tab))}
   end
 
   def handle_event("delete_module", %{"id" => id}, socket) do
@@ -231,8 +237,44 @@ defmodule KubuniWeb.AdminLive.CourseShow do
           <.stat_card label="Lectures" value={@lecture_count} icon="hero-play-circle" />
         </div>
 
+        <%!-- Tabs --%>
+        <div class="flex items-center gap-2 rounded-full border border-black/5 bg-white p-1.5">
+          <button
+            type="button"
+            phx-click={JS.push("switch_tab", value: %{tab: "curriculum"})}
+            class={[
+              "flex-1 rounded-full px-5 py-2.5 text-sm font-medium transition sm:flex-none",
+              if(@active_tab == :curriculum,
+                do: "bg-dark text-white",
+                else: "text-muted hover:text-dark"
+              )
+            ]}
+          >
+            Curriculum
+          </button>
+          <button
+            type="button"
+            phx-click={JS.push("switch_tab", value: %{tab: "students"})}
+            class={[
+              "flex-1 rounded-full px-5 py-2.5 text-sm font-medium transition sm:flex-none",
+              if(@active_tab == :students,
+                do: "bg-dark text-white",
+                else: "text-muted hover:text-dark"
+              )
+            ]}
+          >
+            Enrolled students
+            <span class="ml-1.5 rounded-full bg-mint px-2 py-0.5 text-xs font-semibold text-primary">
+              {@student_count}
+            </span>
+          </button>
+        </div>
+
         <%!-- Curriculum (editable) --%>
-        <section class="rounded-3xl border border-black/5 bg-white p-6 lg:p-8">
+        <section
+          :if={@active_tab == :curriculum}
+          class="rounded-3xl border border-black/5 bg-white p-6 lg:p-8"
+        >
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 class="text-xl font-semibold text-dark">Course curriculum</h2>
@@ -393,7 +435,10 @@ defmodule KubuniWeb.AdminLive.CourseShow do
         </section>
 
         <%!-- Enrolled students --%>
-        <section class="rounded-3xl border border-black/5 bg-white p-6 lg:p-8">
+        <section
+          :if={@active_tab == :students}
+          class="rounded-3xl border border-black/5 bg-white p-6 lg:p-8"
+        >
           <h2 class="text-xl font-semibold text-dark">Enrolled students</h2>
 
           <div :if={@students != []} class="mt-5 overflow-x-auto">

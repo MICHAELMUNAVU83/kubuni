@@ -63,11 +63,7 @@ defmodule KubuniWeb.AdminLive.Dashboard do
             hint={"#{@successful_payments} successful payments"}
           />
           <.stat_card label="Students" value={@student_count} icon="hero-users" />
-          <.stat_card
-            label="Active enrollments"
-            value={@active_enrollments}
-            icon="hero-academic-cap"
-          />
+          <.stat_card label="Active enrollments" value={@active_enrollments} icon="hero-academic-cap" />
           <.stat_card
             label="Courses"
             value={@course_count}
@@ -81,7 +77,10 @@ defmodule KubuniWeb.AdminLive.Dashboard do
           <section class="rounded-3xl border border-black/5 bg-white p-6 lg:col-span-3">
             <div class="flex items-center justify-between">
               <h2 class="text-xl font-semibold text-dark">Top courses by revenue</h2>
-              <.link navigate={~p"/admin/courses"} class="text-sm font-medium text-primary hover:text-dark">
+              <.link
+                navigate={~p"/admin/courses"}
+                class="text-sm font-medium text-primary hover:text-dark"
+              >
                 View all →
               </.link>
             </div>
@@ -111,7 +110,10 @@ defmodule KubuniWeb.AdminLive.Dashboard do
           <section class="rounded-3xl border border-black/5 bg-white p-6 lg:col-span-2">
             <div class="flex items-center justify-between">
               <h2 class="text-xl font-semibold text-dark">Recent payments</h2>
-              <.link navigate={~p"/admin/payments"} class="text-sm font-medium text-primary hover:text-dark">
+              <.link
+                navigate={~p"/admin/payments"}
+                class="text-sm font-medium text-primary hover:text-dark"
+              >
                 All →
               </.link>
             </div>

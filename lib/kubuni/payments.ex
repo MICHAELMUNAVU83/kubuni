@@ -149,9 +149,14 @@ defmodule Kubuni.Payments do
   def delete_payment(%Payment{} = payment), do: Repo.delete(payment)
   def change_payment(%Payment{} = payment, attrs \\ %{}), do: Payment.changeset(payment, attrs)
 
-  def initialize_checkout(%User{} = user, %Course{} = course, provider \\ provider()) do
+  def initialize_checkout(
+        %User{} = user,
+        %Course{} = course,
+        phone \\ nil,
+        provider \\ provider()
+      ) do
     with {:ok, %{enrollment: enrollment, payment: payment}} <-
-           create_pending_checkout(user, course),
+           create_pending_checkout(user, course, phone),
          {:ok, response} <- provider.initiate(Repo.preload(payment, :user)),
          {:ok, authorization_url} <- Map.fetch(response, "authorization_url"),
          {:ok, payment} <- store_initialization(payment, response) do
@@ -167,7 +172,7 @@ defmodule Kubuni.Payments do
     end
   end
 
-  def create_pending_checkout(%User{} = user, %Course{} = course) do
+  def create_pending_checkout(%User{} = user, %Course{} = course, phone \\ nil) do
     Repo.transaction(fn ->
       with {:ok, enrollment} <- Enrollments.create_pending_enrollment(user, course),
            {:ok, payment} <-
@@ -179,6 +184,7 @@ defmodule Kubuni.Payments do
                provider_reference: payment_reference(),
                amount_minor: course.price_minor,
                currency: course.currency,
+               phone: phone,
                status: :pending,
                raw_payload: %{}
              }) do

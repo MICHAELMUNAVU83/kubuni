@@ -2,6 +2,10 @@ defmodule KubuniWeb.HomeComponents do
   use Phoenix.Component
   use Gettext, backend: KubuniWeb.Gettext
 
+  alias Kubuni.Catalog
+
+  attr :current_user, :map, default: nil
+
   def home_header(assigns) do
     ~H"""
     <header class="absolute inset-x-0 top-0 z-50">
@@ -130,10 +134,31 @@ defmodule KubuniWeb.HomeComponents do
     <!-- right -->
           <div class="flex items-center gap-3">
             <a
-              href="#mentors"
+              :if={@current_user}
+              href={home_destination_path(@current_user)}
+              class="group hidden items-center gap-2 rounded-full bg-dark py-1.5 pl-5 pr-1.5 font-medium text-white transition hover:bg-primary sm:inline-flex"
+            >
+              {home_destination_label(@current_user)}
+              <span class="grid h-9 w-9 place-items-center rounded-full bg-primary text-white transition group-hover:bg-dark">
+                <svg
+                  class="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+                </svg>
+              </span>
+            </a>
+            <a
+              :if={!@current_user}
+              href="/users/log_in"
               class="group hidden items-center gap-2 rounded-full border border-dark py-1.5 pl-5 pr-1.5 font-medium text-dark transition hover:bg-dark hover:text-white sm:inline-flex"
             >
-              View All Mentors
+              Login
               <span class="grid h-9 w-9 place-items-center rounded-full bg-dark text-white transition group-hover:bg-primary">
                 <svg
                   class="h-4 w-4"
@@ -175,9 +200,15 @@ defmodule KubuniWeb.HomeComponents do
     """
   end
 
+  defp home_destination_path(%{role: :admin}), do: "/admin"
+  defp home_destination_path(_user), do: "/dashboard"
+
+  defp home_destination_label(%{role: :admin}), do: "Admin dashboard"
+  defp home_destination_label(_user), do: "My dashboard"
+
   def hero(assigns) do
     ~H"""
-    <section class="relative overflow-hidden bg-gradient-to-b from-mint via-white to-white pt-32 pb-20 lg:pt-40">
+    <section class="relative overflow-hidden bg-gradient-to-b from-mint via-white to-white pt-20 pb-20 ">
       <div class="mx-auto max-w-container px-5 lg:px-8">
         <div class="grid items-center gap-12 lg:grid-cols-2">
           <div>
@@ -262,56 +293,27 @@ defmodule KubuniWeb.HomeComponents do
           </div>
 
           <div class="relative px-4 pt-2 sm:px-6">
-            <!-- brand diamond mark -->
-            <svg class="absolute -left-2 top-0 z-20 h-12 w-12 text-[#3cb878]" viewBox="0 0 48 48" fill="none">
-              <rect x="9" y="9" width="30" height="30" rx="3" transform="rotate(45 24 24)" stroke="currentColor" stroke-width="4" />
-              <rect x="16" y="16" width="16" height="16" rx="2" transform="rotate(45 24 24)" fill="currentColor" />
-            </svg>
-            <!-- students badge -->
-            <div class="absolute left-12 top-2 z-20 rounded-2xl bg-[#efe6fb] px-5 py-4 shadow-sm">
-              <div class="flex items-center">
-                <div class="flex -space-x-3">
-                  <img
-                    src="https://randomuser.me/api/portraits/men/32.jpg"
-                    alt=""
-                    class="h-11 w-11 rounded-full border-[3px] border-[#efe6fb] object-cover"
-                  />
-                  <img
-                    src="https://randomuser.me/api/portraits/men/44.jpg"
-                    alt=""
-                    class="h-11 w-11 rounded-full border-[3px] border-[#efe6fb] object-cover"
-                  />
-                  <img
-                    src="https://randomuser.me/api/portraits/men/55.jpg"
-                    alt=""
-                    class="h-11 w-11 rounded-full border-[3px] border-[#efe6fb] object-cover"
-                  />
-                </div>
-                <span class="ml-3 grid h-11 w-11 place-items-center rounded-full bg-[#e0d3f5] text-indigo-500">
-                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </span>
-              </div>
-              <p class="mt-3 text-xl font-bold text-dark">120K Students</p>
-            </div>
-            <!-- white photo card -->
-            <div class="relative mt-20 rounded-[28px] bg-white p-3 shadow-2xl">
+            
+    <!-- white photo card -->
+            <div class="relative mt-4">
               <img
-                src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80"
+                src="/images/hero_image.jpg"
                 alt="Man working with laptop"
                 class="aspect-[4/5] w-full rounded-[20px] object-cover"
               />
             </div>
             <!-- rotating "learn digital abilities" badge -->
             <div class="absolute -bottom-6 -left-6 z-20 grid h-36 w-36 place-items-center rounded-full bg-[#3cb878] text-white shadow-xl">
-              <svg class="absolute inset-0 h-full w-full animate-[spin_16s_linear_infinite]" viewBox="0 0 100 100">
+              <svg
+                class="absolute inset-0 h-full w-full animate-[spin_16s_linear_infinite]"
+                viewBox="0 0 100 100"
+              >
                 <defs>
                   <path id="hero-badge-arc" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0" />
                 </defs>
                 <text class="fill-white text-[10px] font-semibold uppercase tracking-[0.24em]">
                   <textPath href="#hero-badge-arc" startOffset="0%">
-                    Learn Digital Abilities •
+                    • Learn Skills Online • Kubuni
                   </textPath>
                 </text>
               </svg>
@@ -326,161 +328,29 @@ defmodule KubuniWeb.HomeComponents do
     """
   end
 
+  attr :courses, :list, default: []
+
   def top_courses_section(assigns) do
     ~H"""
-    <section id="courses" class="bg-soft py-20 lg:py-28">
+    <section id="courses" class="bg-soft py-8">
       <div class="mx-auto max-w-container px-5 lg:px-8">
         <h2 class="mx-auto max-w-2xl text-center text-3xl font-semibold text-dark sm:text-4xl lg:text-5xl">
           Our Platform’s Top Courses Chosen Just for You
         </h2>
-        <div class="mt-14 grid gap-7 md:grid-cols-2 lg:grid-cols-3">
-          <!-- card -->
-          <a
-            href="/courses"
-            class="group block overflow-hidden rounded-3xl border border-black/5 bg-white transition hover:shadow-xl"
-          >
-            <div class="overflow-hidden">
-              <img
-                loading="lazy"
-                src="https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&w=900&q=80"
-                alt=""
-                class="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
-              />
-            </div>
-            <div class="p-6">
-              <div class="flex items-center justify-between">
-                <span class="rounded-full bg-mint px-3 py-1 text-sm font-medium text-primary">
-                  Development
-                </span>
-                <div class="text-xl font-semibold text-dark">
-                  $220<span class="text-base text-body">.00</span>
-                </div>
-              </div>
-              <h3 class="mt-4 text-lg font-medium text-dark">HTML, CSS, and JavaScript</h3>
-              <div class="mt-5 flex items-center gap-5 text-sm text-body">
-                <span class="flex items-center gap-2">
-                  <svg
-                    class="h-5 w-5 text-muted"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>4hr 35min
-                </span>
-                <span class="flex items-center gap-2">
-                  <svg
-                    class="h-5 w-5 text-muted"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><polyline points="14 3 14 8 19 8" /></svg>30 lectures
-                </span>
-              </div>
-            </div>
-          </a>
-          <a
-            href="#"
-            class="group block overflow-hidden rounded-3xl border border-black/5 bg-white transition hover:shadow-xl"
-          >
-            <div class="overflow-hidden">
-              <img
-                loading="lazy"
-                src="https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=900&q=80"
-                alt=""
-                class="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
-              />
-            </div>
-            <div class="p-6">
-              <div class="flex items-center justify-between">
-                <span class="rounded-full bg-mint px-3 py-1 text-sm font-medium text-primary">
-                  Project Management
-                </span>
-                <div class="text-xl font-semibold text-dark">
-                  $150<span class="text-base text-body">.00</span>
-                </div>
-              </div>
-              <h3 class="mt-4 text-lg font-medium text-dark">UX Research &amp; Usability Testing</h3>
-              <div class="mt-5 flex items-center gap-5 text-sm text-body">
-                <span class="flex items-center gap-2">
-                  <svg
-                    class="h-5 w-5 text-muted"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>4hr 35min
-                </span>
-                <span class="flex items-center gap-2">
-                  <svg
-                    class="h-5 w-5 text-muted"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><polyline points="14 3 14 8 19 8" /></svg>30 lectures
-                </span>
-              </div>
-            </div>
-          </a>
-          <a
-            href="#"
-            class="group block overflow-hidden rounded-3xl border border-black/5 bg-white transition hover:shadow-xl"
-          >
-            <div class="overflow-hidden">
-              <img
-                loading="lazy"
-                src="https://images.unsplash.com/photo-1545235617-9465d2a55698?auto=format&fit=crop&w=900&q=80"
-                alt=""
-                class="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
-              />
-            </div>
-            <div class="p-6">
-              <div class="flex items-center justify-between">
-                <span class="rounded-full bg-mint px-3 py-1 text-sm font-medium text-primary">
-                  UI/UX Design
-                </span>
-                <div class="text-xl font-semibold text-dark">
-                  $122<span class="text-base text-body">.00</span>
-                </div>
-              </div>
-              <h3 class="mt-4 text-lg font-medium text-dark">Email Marketing Techniques</h3>
-              <div class="mt-5 flex items-center gap-5 text-sm text-body">
-                <span class="flex items-center gap-2">
-                  <svg
-                    class="h-5 w-5 text-muted"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>4hr 35min
-                </span>
-                <span class="flex items-center gap-2">
-                  <svg
-                    class="h-5 w-5 text-muted"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><polyline points="14 3 14 8 19 8" /></svg>30 lectures
-                </span>
-              </div>
-            </div>
-          </a>
+
+        <div :if={@courses != []} class="mt-14 grid gap-7 md:grid-cols-2 lg:grid-cols-3">
+          <.course_card :for={course <- Enum.take(@courses, 3)} course={course} />
         </div>
-        <div class="mt-12 text-center">
+
+        <div
+          :if={@courses == []}
+          class="mx-auto mt-14 max-w-xl rounded-3xl border border-black/5 bg-white p-10 text-center"
+        >
+          <h3 class="text-xl font-semibold text-dark">New courses are on the way.</h3>
+          <p class="mt-2 text-body">Published courses will appear here automatically.</p>
+        </div>
+
+        <div :if={length(@courses) > 3} class="mt-12 text-center">
           <a
             href="/courses"
             class="group inline-flex items-center gap-2 rounded-full border border-dark py-1.5 pl-6 pr-1.5 font-medium text-dark transition hover:bg-dark hover:text-white"
@@ -506,9 +376,88 @@ defmodule KubuniWeb.HomeComponents do
     """
   end
 
+  attr :course, :map, required: true
+  attr :image_class, :string, default: "h-56"
+
+  def course_card(assigns) do
+    ~H"""
+    <a
+      href={"/courses/#{@course.slug}"}
+      class="group block overflow-hidden rounded-3xl border border-black/5 bg-white transition hover:shadow-xl"
+    >
+      <div class="overflow-hidden bg-mint">
+        <img
+          loading="lazy"
+          src={@course.thumbnail_key}
+          alt=""
+          class={[@image_class, "w-full object-cover transition duration-500 group-hover:scale-105"]}
+        />
+      </div>
+      <div class="p-6">
+        <div class="flex items-center justify-between gap-4">
+          <span class="rounded-full bg-mint px-3 py-1 text-sm font-medium text-primary">
+            Course
+          </span>
+          <div class="text-lg font-semibold text-dark">
+            {Catalog.format_price(@course)}
+          </div>
+        </div>
+        <h3 class="mt-4 text-lg font-medium text-dark">{@course.title}</h3>
+        <p class="mt-3 line-clamp-2 text-sm leading-6 text-body">{@course.subtitle}</p>
+        <div class="mt-5 flex flex-wrap items-center gap-5 text-sm text-body">
+          <span class="flex items-center gap-2">
+            <svg
+              class="h-5 w-5 text-muted"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
+            </svg>
+            {format_duration(Catalog.duration_seconds(@course))}
+          </span>
+          <span class="flex items-center gap-2">
+            <svg
+              class="h-5 w-5 text-muted"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><polyline points="14 3 14 8 19 8" />
+            </svg>
+            {lecture_label(Catalog.lecture_count(@course))}
+          </span>
+        </div>
+      </div>
+    </a>
+    """
+  end
+
+  defp format_duration(seconds) when is_integer(seconds) and seconds > 0 do
+    hours = div(seconds, 3600)
+    minutes = seconds |> rem(3600) |> div(60)
+
+    cond do
+      hours > 0 and minutes > 0 -> "#{hours}hr #{minutes}min"
+      hours > 0 -> "#{hours}hr"
+      true -> "#{minutes}min"
+    end
+  end
+
+  defp format_duration(_seconds), do: "0min"
+
+  defp lecture_label(1), do: "1 lecture"
+  defp lecture_label(count), do: "#{count} lectures"
+
   def why_choose_us(assigns) do
     ~H"""
-    <section class="py-20 lg:py-28">
+    <section class="py-12">
       <div class="mx-auto max-w-container px-5 lg:px-8">
         <div class="grid items-center gap-12 lg:grid-cols-2">
           <div class="relative">
@@ -582,7 +531,54 @@ defmodule KubuniWeb.HomeComponents do
     """
   end
 
+  attr :courses, :list, default: []
+
   def popular_courses(assigns) do
+    ~H"""
+    <section class="bg-soft py-20 lg:py-28">
+      <div class="mx-auto max-w-container px-5 lg:px-8">
+        <div class="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
+          <h2 class="max-w-xl text-3xl font-semibold text-dark sm:text-4xl lg:text-5xl">
+            Our Popular Courses
+          </h2>
+          <a
+            href="/courses"
+            class="group inline-flex items-center gap-2 rounded-full border border-dark py-1.5 pl-6 pr-1.5 font-medium text-dark transition hover:bg-dark hover:text-white"
+          >
+            View All Courses
+            <span class="grid h-9 w-9 place-items-center rounded-full bg-dark text-white transition group-hover:bg-primary">
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
+              </svg>
+            </span>
+          </a>
+        </div>
+
+        <div :if={@courses != []} class="mt-12 grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3">
+          <.course_card :for={course <- @courses} course={course} image_class="h-52" />
+        </div>
+
+        <div
+          :if={@courses == []}
+          class="mx-auto mt-12 max-w-xl rounded-3xl border border-black/5 bg-white p-10 text-center"
+        >
+          <h3 class="text-xl font-semibold text-dark">No published courses yet.</h3>
+          <p class="mt-2 text-body">Publish courses in the admin area and they will show here.</p>
+        </div>
+      </div>
+    </section>
+    """
+  end
+
+  def unused_static_popular_courses(assigns) do
     ~H"""
     <section class="bg-soft py-20 lg:py-28">
       <div class="mx-auto max-w-container px-5 lg:px-8">
@@ -1551,28 +1547,6 @@ defmodule KubuniWeb.HomeComponents do
               </div>
             </a>
           </div>
-
-          <div class="mt-12 text-center">
-            <a
-              href="/courses"
-              class="group inline-flex items-center gap-2 rounded-full border border-dark py-1.5 pl-6 pr-1.5 font-medium text-dark transition hover:bg-dark hover:text-white"
-            >
-              View All Courses
-              <span class="grid h-9 w-9 place-items-center rounded-full bg-dark text-white transition group-hover:bg-primary">
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
-                </svg>
-              </span>
-            </a>
-          </div>
         </div>
       </div>
     </section>
@@ -1734,6 +1708,38 @@ defmodule KubuniWeb.HomeComponents do
   end
 
   def mentors(assigns) do
+    assigns =
+      assign(assigns, :mentors, [
+        %{
+          name: "Matthew Ryan",
+          role: "Product Designer",
+          image:
+            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
+          class: ""
+        },
+        %{
+          name: "James Michael",
+          role: "Digital Marketer",
+          image:
+            "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
+          class: "sm:mt-12"
+        },
+        %{
+          name: "Daniel Joseph",
+          role: "Software Engineer",
+          image:
+            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=600&q=80",
+          class: ""
+        },
+        %{
+          name: "Anthony Mark",
+          role: "Project Manager",
+          image:
+            "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80",
+          class: "sm:mt-12"
+        }
+      ])
+
     ~H"""
     <section id="mentors" class="bg-dark py-20 lg:py-28">
       <div class="mx-auto max-w-container px-5 lg:px-8">
@@ -1762,162 +1768,58 @@ defmodule KubuniWeb.HomeComponents do
           </a>
         </div>
         <div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <!-- mentor -->
-          <div class="group relative overflow-hidden rounded-3xl">
-            <img
-              loading="lazy"
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80"
-              alt="Matthew Ryan"
-              class="aspect-[3/4] w-full object-cover"
-            />
-            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5">
-              <h3 class="text-lg font-medium text-white">Matthew Ryan</h3>
-              <p class="text-sm text-white/70">Product Designer</p>
-              <div class="mt-3 flex gap-2 opacity-0 transition group-hover:opacity-100">
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.24 2H21.5l-7.5 8.57L23 22h-6.9l-5.4-7.06L4.5 22H1.24l8.02-9.17L1 2h7.07l4.88 6.45z" />
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M14 9h3l.5-3.5H14V3.7c0-1 .3-1.7 1.8-1.7H18V-.1C17.6-.2 16.4-.3 15-.3 12-.3 11 1.4 11 4.4v1.1H8V9h3v13h3z" />
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M4.98 3.5A2.5 2.5 0 1 1 0 3.5a2.5 2.5 0 0 1 4.98 0zM.2 8h4.6v16H.2zm7.5 0H12v2.2h.07c.63-1.2 2.17-2.46 4.46-2.46C21.1 7.74 24 10 24 14.6V24h-4.8v-8c0-2-.04-4.5-2.75-4.5-2.75 0-3.17 2.15-3.17 4.36V24H8.5z" />
-                  </svg>
-                </a>
-              </div>
-            </div>
-          </div>
-          <div class="group relative overflow-hidden rounded-3xl sm:mt-12">
-            <img
-              loading="lazy"
-              src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80"
-              alt="James Michael"
-              class="aspect-[3/4] w-full object-cover"
-            />
-            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5">
-              <h3 class="text-lg font-medium text-white">James Michael</h3>
-              <p class="text-sm text-white/70">Digital Marketer</p>
-              <div class="mt-3 flex gap-2 opacity-0 transition group-hover:opacity-100">
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.24 2H21.5l-7.5 8.57L23 22h-6.9l-5.4-7.06L4.5 22H1.24l8.02-9.17L1 2h7.07l4.88 6.45z" />
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M14 9h3l.5-3.5H14V3.7c0-1 .3-1.7 1.8-1.7H18V-.1C17.6-.2 16.4-.3 15-.3 12-.3 11 1.4 11 4.4v1.1H8V9h3v13h3z" />
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M4.98 3.5A2.5 2.5 0 1 1 0 3.5a2.5 2.5 0 0 1 4.98 0zM.2 8h4.6v16H.2zm7.5 0H12v2.2h.07c.63-1.2 2.17-2.46 4.46-2.46C21.1 7.74 24 10 24 14.6V24h-4.8v-8c0-2-.04-4.5-2.75-4.5-2.75 0-3.17 2.15-3.17 4.36V24H8.5z" />
-                  </svg>
-                </a>
-              </div>
-            </div>
-          </div>
-          <div class="group relative overflow-hidden rounded-3xl">
-            <img
-              loading="lazy"
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=600&q=80"
-              alt="Daniel Joseph"
-              class="aspect-[3/4] w-full object-cover"
-            />
-            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5">
-              <h3 class="text-lg font-medium text-white">Daniel Joseph</h3>
-              <p class="text-sm text-white/70">Software Engineer</p>
-              <div class="mt-3 flex gap-2 opacity-0 transition group-hover:opacity-100">
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.24 2H21.5l-7.5 8.57L23 22h-6.9l-5.4-7.06L4.5 22H1.24l8.02-9.17L1 2h7.07l4.88 6.45z" />
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M14 9h3l.5-3.5H14V3.7c0-1 .3-1.7 1.8-1.7H18V-.1C17.6-.2 16.4-.3 15-.3 12-.3 11 1.4 11 4.4v1.1H8V9h3v13h3z" />
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M4.98 3.5A2.5 2.5 0 1 1 0 3.5a2.5 2.5 0 0 1 4.98 0zM.2 8h4.6v16H.2zm7.5 0H12v2.2h.07c.63-1.2 2.17-2.46 4.46-2.46C21.1 7.74 24 10 24 14.6V24h-4.8v-8c0-2-.04-4.5-2.75-4.5-2.75 0-3.17 2.15-3.17 4.36V24H8.5z" />
-                  </svg>
-                </a>
-              </div>
-            </div>
-          </div>
-          <div class="group relative overflow-hidden rounded-3xl sm:mt-12">
-            <img
-              loading="lazy"
-              src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80"
-              alt="Anthony Mark"
-              class="aspect-[3/4] w-full object-cover"
-            />
-            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5">
-              <h3 class="text-lg font-medium text-white">Anthony Mark</h3>
-              <p class="text-sm text-white/70">Project Manager</p>
-              <div class="mt-3 flex gap-2 opacity-0 transition group-hover:opacity-100">
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.24 2H21.5l-7.5 8.57L23 22h-6.9l-5.4-7.06L4.5 22H1.24l8.02-9.17L1 2h7.07l4.88 6.45z" />
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M14 9h3l.5-3.5H14V3.7c0-1 .3-1.7 1.8-1.7H18V-.1C17.6-.2 16.4-.3 15-.3 12-.3 11 1.4 11 4.4v1.1H8V9h3v13h3z" />
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
-                >
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M4.98 3.5A2.5 2.5 0 1 1 0 3.5a2.5 2.5 0 0 1 4.98 0zM.2 8h4.6v16H.2zm7.5 0H12v2.2h.07c.63-1.2 2.17-2.46 4.46-2.46C21.1 7.74 24 10 24 14.6V24h-4.8v-8c0-2-.04-4.5-2.75-4.5-2.75 0-3.17 2.15-3.17 4.36V24H8.5z" />
-                  </svg>
-                </a>
-              </div>
-            </div>
-          </div>
+          <.mentor_card :for={mentor <- @mentors} mentor={mentor} />
         </div>
       </div>
     </section>
+    """
+  end
+
+  attr :mentor, :map, required: true
+
+  def mentor_card(assigns) do
+    ~H"""
+    <div class={["group relative aspect-[3/4] overflow-hidden rounded-3xl", @mentor.class]}>
+      <img
+        loading="lazy"
+        src={@mentor.image}
+        alt={@mentor.name}
+        class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+      />
+      <div class="absolute inset-x-0 bottom-0 p-5 [text-shadow:_0_2px_14px_rgb(0_0_0_/_0.75)]">
+        <h3 class="text-lg font-medium text-white">{@mentor.name}</h3>
+        <p class="text-sm text-white/85">{@mentor.role}</p>
+        <div class="mt-3 flex gap-2 opacity-0 transition group-hover:opacity-100">
+          <a
+            href="#"
+            aria-label={"#{@mentor.name} on X"}
+            class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.24 2H21.5l-7.5 8.57L23 22h-6.9l-5.4-7.06L4.5 22H1.24l8.02-9.17L1 2h7.07l4.88 6.45z" />
+            </svg>
+          </a>
+          <a
+            href="#"
+            aria-label={"#{@mentor.name} on Facebook"}
+            class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14 9h3l.5-3.5H14V3.7c0-1 .3-1.7 1.8-1.7H18V-.1C17.6-.2 16.4-.3 15-.3 12-.3 11 1.4 11 4.4v1.1H8V9h3v13h3z" />
+            </svg>
+          </a>
+          <a
+            href="#"
+            aria-label={"#{@mentor.name} on LinkedIn"}
+            class="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white transition hover:bg-primary"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4.98 3.5A2.5 2.5 0 1 1 0 3.5a2.5 2.5 0 0 1 4.98 0zM.2 8h4.6v16H.2zm7.5 0H12v2.2h.07c.63-1.2 2.17-2.46 4.46-2.46C21.1 7.74 24 10 24 14.6V24h-4.8v-8c0-2-.04-4.5-2.75-4.5-2.75 0-3.17 2.15-3.17 4.36V24H8.5z" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
     """
   end
 
@@ -2072,7 +1974,7 @@ defmodule KubuniWeb.HomeComponents do
 
   def blog(assigns) do
     ~H"""
-    <section id="blog" class="py-20 lg:py-28">
+    <section id="blog" class="py-8">
       <div class="mx-auto max-w-container px-5 lg:px-8">
         <div class="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
           <h2 class="max-w-xl text-3xl font-semibold text-dark sm:text-4xl">

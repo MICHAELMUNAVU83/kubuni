@@ -12,15 +12,27 @@ defmodule Kubuni.Paystack do
     payment = Kubuni.Repo.preload(payment, :user)
 
     request(:post, "/transaction/initialize",
-      json: %{
-        email: payment.user.email,
-        amount: payment.amount_minor,
-        reference: payment.provider_reference,
-        callback_url: callback_url()
-      }
+      json:
+        %{
+          email: payment.user.email,
+          amount: payment.amount_minor,
+          reference: payment.provider_reference,
+          callback_url: callback_url()
+        }
+        |> maybe_put_phone(payment.phone)
     )
     |> normalize_response()
   end
+
+  # Surfaces the learner-chosen M-Pesa number to Paystack so the mobile-money
+  # prompt is sent to it. Paystack prefills the checkout from the metadata.
+  defp maybe_put_phone(params, phone) when is_binary(phone) and phone != "" do
+    params
+    |> Map.put(:phone, phone)
+    |> Map.put(:metadata, %{phone: phone})
+  end
+
+  defp maybe_put_phone(params, _phone), do: params
 
   @impl true
   def verify(reference) when is_binary(reference) do
@@ -63,6 +75,6 @@ defmodule Kubuni.Paystack do
   defp api_url, do: Application.fetch_env!(:kubuni, :paystack_api_url)
 
   defp secret_key do
-   "sk_test_7267bf7b9b38cd9798c6328f7e0b3cc5a264f4aa"
+    "sk_test_7267bf7b9b38cd9798c6328f7e0b3cc5a264f4aa"
   end
 end

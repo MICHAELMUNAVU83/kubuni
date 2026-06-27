@@ -54,6 +54,7 @@ defmodule Kubuni.Catalog do
     |> where([course], course.status == :published)
     |> order_by([course], asc: course.position, asc: course.title)
     |> Repo.all()
+    |> preload_outline()
   end
 
   @doc """
@@ -118,11 +119,11 @@ defmodule Kubuni.Catalog do
     |> Enum.sum()
   end
 
-  defp preload_outline(%Course{} = course) do
+  defp preload_outline(course_or_courses) do
     modules_query = from(module in CourseModule, order_by: [asc: module.position])
     lectures_query = from(lecture in Lecture, order_by: [asc: lecture.position])
 
-    Repo.preload(course, modules: {modules_query, lectures: lectures_query})
+    Repo.preload(course_or_courses, modules: {modules_query, lectures: lectures_query})
   end
 
   @doc """

@@ -50,7 +50,7 @@ defmodule KubuniWeb.AdminLiveTest do
         subtitle: "Learn something",
         description: "A full description",
         thumbnail_key: "thumb.jpg",
-        price_minor: "150000",
+        price_minor: "1500.00",
         currency: "KES",
         status: "published",
         position: "3"
@@ -63,7 +63,43 @@ defmodule KubuniWeb.AdminLiveTest do
 
       assert_patched(view, ~p"/admin/courses")
       assert html =~ "A brand new course"
-      assert Kubuni.Catalog.get_course_by_slug!("new-admin-course")
+      assert %{price_minor: 150_000} = Kubuni.Catalog.get_course_by_slug!("new-admin-course")
+    end
+
+    test "uploads a course thumbnail through the modal form", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/admin/courses/new")
+
+      thumbnail =
+        file_input(view, "#course-form", :thumbnail, [
+          %{name: "cover.png", content: "fake-image-bytes", type: "image/png"}
+        ])
+
+      assert render_upload(thumbnail, "cover.png") =~ "100%"
+
+      html =
+        view
+        |> form("#course-form",
+          course: %{
+            slug: "uploaded-thumbnail-course",
+            title: "Uploaded thumbnail course",
+            subtitle: "Image upload",
+            description: "A course with an uploaded thumbnail.",
+            price_minor: "1500.00",
+            currency: "KES",
+            status: "published",
+            position: "4"
+          }
+        )
+        |> render_submit()
+
+      assert html =~ "Uploaded thumbnail course"
+      course = Kubuni.Catalog.get_course_by_slug!("uploaded-thumbnail-course")
+      assert String.starts_with?(course.thumbnail_key, "/uploads/thumbnails/")
+      assert String.ends_with?(course.thumbnail_key, ".png")
+
+      on_exit(fn ->
+        File.rm(Path.join(:code.priv_dir(:kubuni), "static#{course.thumbnail_key}"))
+      end)
     end
   end
 

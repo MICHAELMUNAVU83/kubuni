@@ -37,11 +37,7 @@ defmodule KubuniWeb.CertificatesLive do
           </span>
         </div>
 
-        <div
-          :if={@certificates != []}
-          id="certificates-list"
-          class="mt-8 grid gap-5 md:grid-cols-2"
-        >
+        <div :if={@certificates != []} id="certificates-list" class="mt-8 grid gap-5 md:grid-cols-2">
           <article
             :for={certificate <- @certificates}
             id={"certificate-#{certificate.id}"}

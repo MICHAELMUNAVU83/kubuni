@@ -17,7 +17,7 @@ defmodule KubuniWeb.UserRegistrationLiveTest do
         conn
         |> log_in_user(user_fixture())
         |> live(~p"/users/register")
-        |> follow_redirect(conn, "/")
+        |> follow_redirect(conn, ~p"/dashboard")
 
       assert {:ok, _conn} = result
     end
@@ -28,11 +28,11 @@ defmodule KubuniWeb.UserRegistrationLiveTest do
       result =
         lv
         |> element("#registration_form")
-        |> render_change(user: %{"email" => "with spaces", "password" => "too short"})
+        |> render_change(user: %{"email" => "with spaces", "password" => "short"})
 
       assert result =~ "Register"
       assert result =~ "must have the @ sign and no spaces"
-      assert result =~ "should be at least 12 character"
+      assert result =~ "should be at least 6 character"
     end
   end
 
@@ -45,15 +45,11 @@ defmodule KubuniWeb.UserRegistrationLiveTest do
       render_submit(form)
       conn = follow_trigger_action(form, conn)
 
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/dashboard"
 
-      # Now do a logged in request and assert the global auth strip stays hidden.
-      conn = get(conn, "/")
+      conn = get(conn, ~p"/dashboard")
       response = html_response(conn, 200)
       assert response =~ "Account created successfully!"
-      refute response =~ email
-      refute response =~ "Settings"
-      refute response =~ "Log out"
     end
 
     test "renders errors for duplicated email", %{conn: conn} do

@@ -16,7 +16,6 @@ defmodule Kubuni.AccountsFixtures do
     Enum.into(attrs, %{
       name: "Test User",
       email: unique_user_email(),
-      phone: unique_user_phone(),
       password: valid_user_password()
     })
   end

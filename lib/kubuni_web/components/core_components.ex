@@ -389,6 +389,67 @@ defmodule KubuniWeb.CoreComponents do
   end
 
   @doc """
+  Renders a design-system styled input for authentication surfaces.
+
+  Matches the Kubuni design tokens (see `design.md`): `Outfit` type,
+  `border-black/10` hairlines, `text-dark` text, and a `focus:border-primary`
+  accent. Used by the log in / sign up pages.
+
+  ## Examples
+
+      <.auth_input field={@form[:email]} type="email" label="Email" required />
+  """
+  attr :id, :any, default: nil
+  attr :name, :any
+  attr :label, :string, default: nil
+  attr :value, :any
+
+  attr :type, :string,
+    default: "text",
+    values: ~w(email password tel text url)
+
+  attr :field, Phoenix.HTML.FormField,
+    doc: "a form field struct retrieved from the form, for example: @form[:email]"
+
+  attr :errors, :list, default: []
+  attr :rest, :global, include: ~w(autocomplete placeholder readonly required)
+
+  def auth_input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assigns
+    |> assign(field: nil, id: assigns.id || field.id)
+    |> assign(:errors, Enum.map(errors, &translate_error/1))
+    |> assign_new(:name, fn -> field.name end)
+    |> assign_new(:value, fn -> field.value end)
+    |> auth_input()
+  end
+
+  def auth_input(assigns) do
+    ~H"""
+    <div>
+      <label :if={@label} for={@id} class="mb-2 block text-sm font-medium text-dark">
+        {@label}
+      </label>
+      <input
+        type={@type}
+        name={@name}
+        id={@id}
+        value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+        class={[
+          "block w-full rounded-2xl border bg-white px-5 py-3.5 text-dark outline-none transition",
+          "placeholder:text-muted focus:ring-4 focus:ring-primary/10",
+          @errors == [] && "border-black/10 focus:border-primary",
+          @errors != [] && "border-rose-400 focus:border-rose-400"
+        ]}
+        {@rest}
+      />
+      <.error :for={msg <- @errors}>{msg}</.error>
+    </div>
+    """
+  end
+
+  @doc """
   Renders a label.
   """
   attr :for, :string, default: nil

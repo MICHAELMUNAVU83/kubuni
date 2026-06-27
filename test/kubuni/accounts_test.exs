@@ -50,14 +50,13 @@ defmodule Kubuni.AccountsTest do
   end
 
   describe "register_user/1" do
-    test "requires identity, phone, email and password to be set" do
+    test "requires identity, email and password to be set" do
       {:error, changeset} = Accounts.register_user(%{})
 
       assert %{
                password: ["can't be blank"],
                email: ["can't be blank"],
-               name: ["can't be blank"],
-               phone: ["can't be blank"]
+               name: ["can't be blank"]
              } = errors_on(changeset)
     end
 
@@ -65,15 +64,13 @@ defmodule Kubuni.AccountsTest do
       {:error, changeset} =
         Accounts.register_user(%{
           name: "Test User",
-          phone: "not a phone",
           email: "not valid",
-          password: "not valid"
+          password: "short"
         })
 
       assert %{
                email: ["must have the @ sign and no spaces"],
-               phone: ["must be a valid Kenyan mobile number (2547XXXXXXXX)"],
-               password: ["should be at least 12 character(s)"]
+               password: ["should be at least 6 character(s)"]
              } = errors_on(changeset)
     end
 
@@ -102,14 +99,6 @@ defmodule Kubuni.AccountsTest do
       assert is_nil(user.confirmed_at)
       assert is_nil(user.password)
       assert user.role == :learner
-      assert String.starts_with?(user.phone, "2547")
-    end
-
-    test "normalises common Kenyan phone formats" do
-      {:ok, user} =
-        Accounts.register_user(valid_user_attributes(phone: "0712 345-678"))
-
-      assert user.phone == "254712345678"
     end
 
     test "does not allow registration to set an admin role" do
@@ -121,7 +110,7 @@ defmodule Kubuni.AccountsTest do
   describe "change_user_registration/2" do
     test "returns a changeset" do
       assert %Ecto.Changeset{} = changeset = Accounts.change_user_registration(%User{})
-      assert Enum.sort(changeset.required) == Enum.sort([:name, :phone, :password, :email])
+      assert Enum.sort(changeset.required) == Enum.sort([:name, :password, :email])
     end
 
     test "allows fields to be set" do
@@ -286,12 +275,12 @@ defmodule Kubuni.AccountsTest do
     test "validates password", %{user: user} do
       {:error, changeset} =
         Accounts.update_user_password(user, valid_user_password(), %{
-          password: "not valid",
+          password: "short",
           password_confirmation: "another"
         })
 
       assert %{
-               password: ["should be at least 12 character(s)"],
+               password: ["should be at least 6 character(s)"],
                password_confirmation: ["does not match password"]
              } = errors_on(changeset)
     end
@@ -497,12 +486,12 @@ defmodule Kubuni.AccountsTest do
     test "validates password", %{user: user} do
       {:error, changeset} =
         Accounts.reset_user_password(user, %{
-          password: "not valid",
+          password: "short",
           password_confirmation: "another"
         })
 
       assert %{
-               password: ["should be at least 12 character(s)"],
+               password: ["should be at least 6 character(s)"],
                password_confirmation: ["does not match password"]
              } = errors_on(changeset)
     end

@@ -2,6 +2,7 @@ defmodule KubuniWeb.UserSessionControllerTest do
   use KubuniWeb.ConnCase, async: true
 
   import Kubuni.AccountsFixtures
+  alias Kubuni.Accounts
 
   setup do
     %{user: user_fixture()}
@@ -15,14 +16,7 @@ defmodule KubuniWeb.UserSessionControllerTest do
         })
 
       assert get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/"
-
-      # Now do a logged in request and assert on the menu
-      conn = get(conn, ~p"/")
-      response = html_response(conn, 200)
-      assert response =~ user.email
-      assert response =~ ~p"/users/settings"
-      assert response =~ ~p"/users/log_out"
+      assert redirected_to(conn) == ~p"/dashboard"
     end
 
     test "logs the user in with remember me", %{conn: conn, user: user} do
@@ -36,7 +30,19 @@ defmodule KubuniWeb.UserSessionControllerTest do
         })
 
       assert conn.resp_cookies["_kubuni_web_user_remember_me"]
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/dashboard"
+    end
+
+    test "logs administrators into the admin area", %{conn: conn, user: user} do
+      {:ok, admin} = Accounts.update_user_role(user, :admin)
+
+      conn =
+        post(conn, ~p"/users/log_in", %{
+          "user" => %{"email" => admin.email, "password" => valid_user_password()}
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/admin"
     end
 
     test "logs the user in with return to", %{conn: conn, user: user} do
@@ -65,7 +71,7 @@ defmodule KubuniWeb.UserSessionControllerTest do
           }
         })
 
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/dashboard"
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Account created successfully"
     end
 

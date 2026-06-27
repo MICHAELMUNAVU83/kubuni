@@ -22,6 +22,8 @@ defmodule KubuniWeb.CheckoutLiveTest do
     course = course_fixture(status: :published, price_minor: 80_000)
 
     expect(Kubuni.Payments.ProviderMock, :initiate, fn payment ->
+      assert payment.phone == "254712345678"
+
       {:ok,
        %{
          "authorization_url" => "https://checkout.paystack.test/hosted",
@@ -31,9 +33,25 @@ defmodule KubuniWeb.CheckoutLiveTest do
     end)
 
     {:ok, view, _html} = live(conn, ~p"/courses/#{course.slug}/checkout")
-    view |> element("#pay-with-paystack") |> render_click()
+
+    view
+    |> form("#checkout-form", %{"phone" => "0712345678"})
+    |> render_submit()
 
     assert_redirect(view, "https://checkout.paystack.test/hosted")
+  end
+
+  test "rejects an invalid M-Pesa number before contacting Paystack", %{conn: conn} do
+    course = course_fixture(status: :published, price_minor: 80_000)
+
+    {:ok, view, _html} = live(conn, ~p"/courses/#{course.slug}/checkout")
+
+    html =
+      view
+      |> form("#checkout-form", %{"phone" => "123"})
+      |> render_submit()
+
+    assert html =~ "valid M-Pesa number"
   end
 
   test "redirects when PubSub confirms this course enrollment", %{conn: conn, user: user} do
