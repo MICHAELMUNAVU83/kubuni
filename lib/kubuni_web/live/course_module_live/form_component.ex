@@ -9,7 +9,7 @@ defmodule KubuniWeb.CourseModuleLive.FormComponent do
     <div>
       <.header>
         {@title}
-        <:subtitle>Use this form to manage course_module records in your database.</:subtitle>
+        <:subtitle>Modules group related lectures within a course.</:subtitle>
       </.header>
 
       <.simple_form
@@ -66,6 +66,9 @@ defmodule KubuniWeb.CourseModuleLive.FormComponent do
   end
 
   defp save_course_module(socket, :new, course_module_params) do
+    course_module_params =
+      Map.put(course_module_params, "course_id", socket.assigns.course_module.course_id)
+
     case Catalog.create_course_module(course_module_params) do
       {:ok, course_module} ->
         notify_parent({:saved, course_module})

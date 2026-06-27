@@ -24,6 +24,128 @@ import topbar from "../vendor/topbar"
 
 const Hooks = {}
 
+Hooks.SortableList = {
+  mounted() {
+    this.draggedItem = null
+    this.startOrder = this.order()
+
+    this.onPointerDown = event => {
+      const handle = event.target.closest("[data-sortable-handle]")
+      if (!handle) return
+
+      const item = this.itemFor(handle)
+      if (!item) return
+
+      item.draggable = true
+    }
+
+    this.onPointerUp = () => {
+      if (this.draggedItem) return
+      this.items().forEach(item => item.draggable = false)
+    }
+
+    this.onDragStart = event => {
+      const item = this.itemFor(event.target)
+      if (!item) return
+
+      this.draggedItem = item
+      this.startOrder = this.order()
+      item.dataset.dragging = "true"
+      event.dataTransfer.effectAllowed = "move"
+      event.dataTransfer.setData("text/plain", item.dataset.id)
+    }
+
+    this.onDragOver = event => {
+      if (!this.draggedItem) return
+
+      const target = this.itemFor(event.target)
+      if (!target || target === this.draggedItem) return
+
+      event.preventDefault()
+      event.dataTransfer.dropEffect = "move"
+
+      const targetRect = target.getBoundingClientRect()
+      const insertAfter = event.clientY > targetRect.top + targetRect.height / 2
+      this.items().forEach(item => delete item.dataset.dragOver)
+      target.dataset.dragOver = "true"
+
+      this.el.insertBefore(
+        this.draggedItem,
+        insertAfter ? target.nextElementSibling : target
+      )
+    }
+
+    this.onDragLeave = event => {
+      const item = this.itemFor(event.target)
+      if (item) delete item.dataset.dragOver
+    }
+
+    this.onDrop = event => {
+      if (!this.draggedItem) return
+      event.preventDefault()
+      this.persistOrder()
+    }
+
+    this.onDragEnd = () => {
+      this.items().forEach(item => {
+        item.draggable = false
+        delete item.dataset.dragging
+        delete item.dataset.dragOver
+      })
+
+      if (this.draggedItem) this.persistOrder()
+      this.draggedItem = null
+    }
+
+    this.el.addEventListener("pointerdown", this.onPointerDown)
+    document.addEventListener("pointerup", this.onPointerUp)
+    this.el.addEventListener("dragstart", this.onDragStart)
+    this.el.addEventListener("dragover", this.onDragOver)
+    this.el.addEventListener("dragleave", this.onDragLeave)
+    this.el.addEventListener("drop", this.onDrop)
+    this.el.addEventListener("dragend", this.onDragEnd)
+  },
+
+  destroyed() {
+    this.el.removeEventListener("pointerdown", this.onPointerDown)
+    document.removeEventListener("pointerup", this.onPointerUp)
+    this.el.removeEventListener("dragstart", this.onDragStart)
+    this.el.removeEventListener("dragover", this.onDragOver)
+    this.el.removeEventListener("dragleave", this.onDragLeave)
+    this.el.removeEventListener("drop", this.onDrop)
+    this.el.removeEventListener("dragend", this.onDragEnd)
+  },
+
+  items() {
+    return Array.from(this.el.querySelectorAll(":scope > [data-sortable-item]"))
+  },
+
+  itemFor(element) {
+    const item = element.closest("[data-sortable-item]")
+    return item?.parentElement === this.el ? item : null
+  },
+
+  order() {
+    return this.items().map(item => item.dataset.id)
+  },
+
+  persistOrder() {
+    const order = this.order()
+    if (order.join(",") === this.startOrder.join(",")) return
+
+    const payload = {
+      [this.el.dataset.orderKey || "ids"]: order
+    }
+
+    if (this.el.dataset.parentKey) {
+      payload[this.el.dataset.parentKey] = this.el.dataset.parentId
+    }
+
+    this.startOrder = order
+    this.pushEvent(this.el.dataset.event, payload)
+  }
+}
+
 Hooks.ProtectedVideo = {
   mounted() {
     this.playerHost = this.el.querySelector("[data-role='player']")
@@ -64,6 +186,8 @@ Hooks.ProtectedVideo = {
       player.setAttribute("playsinline", "")
       player.style.width = "100%"
       player.style.height = "100%"
+      // Letterbox non-16:9 sources instead of stretching them to fill the frame.
+      player.style.setProperty("--media-object-fit", "contain")
 
       this.player = player
       this.lastSavedPosition = Number(this.el.dataset.startPosition || 0)
@@ -130,11 +254,51 @@ Hooks.ProtectedVideo = {
   }
 }
 
+Hooks.VideoPreview = {
+  mounted() {
+    this.preview = this.el.querySelector("[data-role='preview']")
+
+    this.el.addEventListener("change", event => {
+      const input = event.target
+      if (input.type !== "file" || !input.files || !input.files[0]) return
+
+      const file = input.files[0]
+      if (this.objectUrl) URL.revokeObjectURL(this.objectUrl)
+      this.objectUrl = URL.createObjectURL(file)
+
+      this.preview.src = this.objectUrl
+      this.preview.classList.remove("hidden")
+      this.preview.onloadedmetadata = () => this.fillDuration()
+    })
+  },
+
+  fillDuration() {
+    const seconds = Math.round(this.preview.duration)
+    if (!Number.isFinite(seconds) || seconds <= 0) return
+
+    const durationInput = this.el
+      .closest("form")
+      ?.querySelector("[name='lecture[duration_seconds]']")
+
+    if (durationInput) {
+      durationInput.value = seconds
+      durationInput.dispatchEvent(new Event("input", {bubbles: true}))
+    }
+  },
+
+  destroyed() {
+    if (this.objectUrl) URL.revokeObjectURL(this.objectUrl)
+  }
+}
+
 Hooks.MuxUpload = {
   mounted() {
     this.fileInput = this.el.querySelector("[data-role='file']")
     this.startButton = this.el.querySelector("[data-role='start']")
     this.progress = this.el.querySelector("[data-role='progress']")
+    // When the widget lives inside a LiveComponent (e.g. the lecture form
+    // modal) it sets data-target so events reach the component, not the view.
+    this.uploadTarget = this.el.getAttribute("data-target")
 
     this.startButton.addEventListener("click", () => {
       if (!this.fileInput.files[0]) {
@@ -145,7 +309,7 @@ Hooks.MuxUpload = {
 
       this.fileInput.setCustomValidity("")
       this.startButton.disabled = true
-      this.pushEvent("create-upload", {
+      this.pushUp("create-upload", {
         filename: this.fileInput.files[0].name,
         content_type: this.fileInput.files[0].type,
         size: this.fileInput.files[0].size
@@ -155,13 +319,21 @@ Hooks.MuxUpload = {
     this.handleEvent("mux-upload-ready", ({url}) => this.upload(url))
     this.handleEvent("mux-check-upload", () => {
       window.clearTimeout(this.statusTimer)
-      this.statusTimer = window.setTimeout(() => this.pushEvent("check-upload", {}), 3000)
+      this.statusTimer = window.setTimeout(() => this.pushUp("check-upload", {}), 3000)
     })
   },
 
   destroyed() {
     this.request?.abort()
     window.clearTimeout(this.statusTimer)
+  },
+
+  pushUp(event, payload) {
+    if (this.uploadTarget) {
+      this.pushEventTo(this.uploadTarget, event, payload)
+    } else {
+      this.pushEvent(event, payload)
+    }
   },
 
   upload(url) {
@@ -177,7 +349,7 @@ Hooks.MuxUpload = {
     request.addEventListener("load", () => {
       if (request.status >= 200 && request.status < 300) {
         this.progress.style.width = "100%"
-        this.pushEvent("upload-complete", {})
+        this.pushUp("upload-complete", {})
       } else {
         this.startButton.disabled = false
         console.error(`Mux upload failed (${request.status})`)

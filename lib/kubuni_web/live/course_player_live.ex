@@ -102,44 +102,49 @@ defmodule KubuniWeb.CoursePlayerLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <main id="course-player" class="min-h-screen bg-soft py-8 lg:py-12">
-      <div class="mx-auto max-w-container px-5 lg:px-8">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <span class="rounded-full bg-mint px-3 py-1 text-sm font-medium text-primary">
+    <.student_layout active={:courses} current_user={@current_user}>
+      <div id="course-player" class="py-8 lg:py-12">
+        <div class="mx-auto max-w-container px-5 lg:px-8">
+        <div class="flex flex-col gap-6">
+          <div class="flex items-center justify-between gap-4">
+            <span class="rounded-full bg-mint px-3 py-1 text-xs font-medium uppercase tracking-wider text-primary">
               Enrolled
             </span>
-            <h1 class="mt-4 text-3xl font-semibold text-dark sm:text-4xl">{@course.title}</h1>
+            <.link
+              navigate={~p"/courses/#{@course.slug}"}
+              class="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-primary"
+            >
+              <.icon name="hero-arrow-left" class="h-4 w-4" /> Course overview
+            </.link>
           </div>
-          <div class="min-w-64 rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
-            <div class="flex items-center justify-between gap-4 text-sm">
-              <span class="font-medium text-dark">Course progress</span>
-              <span id="course-progress-percent" class="font-semibold text-primary">
-                {@course_progress.percent}%
-              </span>
-            </div>
-            <div class="mt-3 h-2 overflow-hidden rounded-full bg-mint">
-              <div
-                id="course-progress-bar"
-                class="h-full rounded-full bg-primary transition-all duration-500"
-                style={"width: #{@course_progress.percent}%"}
-              >
+
+          <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <h1 class="text-3xl font-semibold tracking-tight text-dark sm:text-4xl">
+              {@course.title}
+            </h1>
+            <div class="w-full lg:w-72">
+              <div class="flex items-center justify-between gap-4 text-sm">
+                <span class="text-muted">
+                  {@course_progress.completed}/{@course_progress.total} lectures
+                </span>
+                <span id="course-progress-percent" class="font-semibold text-primary">
+                  {@course_progress.percent}%
+                </span>
+              </div>
+              <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-mint">
+                <div
+                  id="course-progress-bar"
+                  class="h-full rounded-full bg-primary transition-all duration-500"
+                  style={"width: #{@course_progress.percent}%"}
+                >
+                </div>
               </div>
             </div>
-            <p class="mt-2 text-xs text-muted">
-              {@course_progress.completed} of {@course_progress.total} lectures completed
-            </p>
           </div>
-          <.link
-            navigate={~p"/courses/#{@course.slug}"}
-            class="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-medium text-dark transition hover:border-primary hover:text-primary"
-          >
-            Course overview
-          </.link>
         </div>
 
-        <div class="mt-8 grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <section class="overflow-hidden rounded-3xl border border-black/5 bg-dark shadow-xl">
+        <div class="mt-10 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12">
+          <section class="overflow-hidden rounded-3xl bg-dark">
             <%= if @current_lecture do %>
               <div
                 id={"protected-player-#{@current_lecture.id}"}
@@ -166,14 +171,14 @@ defmodule KubuniWeb.CoursePlayerLive do
                   {@current_user.email}
                 </div>
               </div>
-              <div class="p-6 text-white">
-                <p class="text-sm font-medium text-primary">Now playing</p>
-                <h2 class="mt-2 text-2xl font-semibold">{@current_lecture.title}</h2>
-                <p class="mt-3 text-white/70">{@current_lecture.description}</p>
-                <p class="mt-4 text-xs text-white/50">
-                  Protected HLS playback. Your account email is watermarked on this session.
+              <div class="p-8 text-white lg:p-10">
+                <p class="text-xs font-medium uppercase tracking-widest text-primary">Now playing</p>
+                <h2 class="mt-3 text-2xl font-semibold tracking-tight">{@current_lecture.title}</h2>
+                <p class="mt-3 max-w-2xl leading-relaxed text-white/60">
+                  {@current_lecture.description}
                 </p>
-                <div class="mt-5 flex flex-wrap items-center gap-3">
+
+                <div class="mt-8 flex flex-wrap items-center gap-3">
                   <button
                     :if={progress_status(@progress, @current_lecture.id) != :completed}
                     id="mark-lecture-complete"
@@ -199,12 +204,14 @@ defmodule KubuniWeb.CoursePlayerLive do
             <% end %>
           </section>
 
-          <aside class="rounded-3xl border border-black/5 bg-white p-5">
-            <h2 class="text-lg font-semibold text-dark">Course content</h2>
-            <div class="mt-4 space-y-5">
+          <aside class="flex max-h-[calc(100vh-2rem)] flex-col rounded-3xl bg-white p-6 lg:sticky lg:top-4 lg:p-7">
+            <h2 class="text-xs font-medium uppercase tracking-widest text-muted">Course content</h2>
+            <div class="-mr-3 mt-6 space-y-8 overflow-y-auto pr-3">
               <section :for={module <- @course.modules}>
-                <h3 class="text-sm font-semibold text-dark">{module.position}. {module.title}</h3>
-                <div class="mt-2 space-y-1">
+                <h3 class="px-1 text-sm font-semibold text-dark">
+                  {module.position}. {module.title}
+                </h3>
+                <div class="mt-3 space-y-0.5">
                   <button
                     :for={lecture <- module.lectures}
                     type="button"
@@ -218,24 +225,28 @@ defmodule KubuniWeb.CoursePlayerLive do
                         else: "true"
                     }
                     class={[
-                      "flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left text-sm transition",
+                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition",
                       @current_lecture && @current_lecture.id == lecture.id &&
-                        "bg-mint text-primary",
+                        "bg-mint font-medium text-primary",
                       (!@current_lecture || @current_lecture.id != lecture.id) &&
                         lecture_unlocked?(@unlocked_lecture_ids, lecture.id) &&
                         "text-body hover:bg-soft hover:text-dark",
                       !lecture_unlocked?(@unlocked_lecture_ids, lecture.id) &&
-                        "cursor-not-allowed text-muted opacity-60"
+                        "cursor-not-allowed text-muted"
                     ]}
                   >
                     <span class={[
-                      "grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-semibold shadow-sm",
-                      progress_status(@progress, lecture.id) == :completed && "text-primary"
+                      "grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold",
+                      progress_status(@progress, lecture.id) == :completed && "bg-primary text-white",
+                      progress_status(@progress, lecture.id) != :completed &&
+                        lecture_unlocked?(@unlocked_lecture_ids, lecture.id) &&
+                        "bg-mint text-primary",
+                      !lecture_unlocked?(@unlocked_lecture_ids, lecture.id) && "text-muted/60"
                     ]}>
                       <.icon
                         :if={progress_status(@progress, lecture.id) == :completed}
                         name="hero-check"
-                        class="h-4 w-4"
+                        class="h-3.5 w-3.5"
                       />
                       <.icon
                         :if={!lecture_unlocked?(@unlocked_lecture_ids, lecture.id)}
@@ -249,11 +260,11 @@ defmodule KubuniWeb.CoursePlayerLive do
                         {lecture.position}
                       </span>
                     </span>
-                    <span class="min-w-0 flex-1 pt-1">
-                      <span class="block">{lecture.title}</span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate">{lecture.title}</span>
                       <span
                         :if={progress_status(@progress, lecture.id) == :in_progress}
-                        class="mt-1 block text-xs text-muted"
+                        class="mt-0.5 block text-xs text-muted"
                       >
                         {progress_percent(@progress, lecture)}% watched
                       </span>
@@ -320,8 +331,9 @@ defmodule KubuniWeb.CoursePlayerLive do
             Complete your first module to earn your first certificate.
           </p>
         </section>
+        </div>
       </div>
-    </main>
+    </.student_layout>
     """
   end
 

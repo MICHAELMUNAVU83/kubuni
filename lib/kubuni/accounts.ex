@@ -61,6 +61,28 @@ defmodule Kubuni.Accounts do
   def get_user!(id), do: Repo.get!(User, id)
 
   @doc """
+  Lists users newest first, optionally scoped to a role. Used by the admin area.
+  """
+  def list_users(role \\ nil) do
+    User
+    |> scope_role(role)
+    |> order_by([u], desc: u.inserted_at, desc: u.id)
+    |> Repo.all()
+  end
+
+  @doc """
+  Counts users, optionally scoped to a role.
+  """
+  def count_users(role \\ nil) do
+    User
+    |> scope_role(role)
+    |> Repo.aggregate(:count)
+  end
+
+  defp scope_role(query, nil), do: query
+  defp scope_role(query, role), do: where(query, [u], u.role == ^role)
+
+  @doc """
   Updates a user's role through the administrative changeset.
   """
   def update_user_role(%User{} = user, role) do

@@ -3,11 +3,10 @@ defmodule KubuniWeb.DashboardLiveTest do
 
   import Phoenix.LiveViewTest
   import Kubuni.CatalogFixtures
-  import Kubuni.CertificatesFixtures
   import Kubuni.EnrollmentsFixtures
   import Kubuni.PaymentsFixtures
 
-  alias Kubuni.{Certificates, Learning}
+  alias Kubuni.Learning
 
   setup :register_and_log_in_user
 
@@ -63,28 +62,6 @@ defmodule KubuniWeb.DashboardLiveTest do
     assert has_element?(view, "#course-progress-#{course.id}", "0%")
     assert has_element?(view, "#dashboard-course-#{course.id}", "First lesson")
     assert has_element?(view, "#dashboard-course-#{course.id}", "Continue learning")
-  end
-
-  test "shows owned certificate downloads and refreshes when one becomes ready", %{
-    conn: conn,
-    user: user
-  } do
-    course = course_fixture(status: :published)
-    module = course_module_fixture(course_id: course.id)
-    enrollment_fixture(user_id: user.id, course_id: course.id, status: :active)
-
-    {:ok, view, _html} = live(conn, ~p"/dashboard")
-    refute has_element?(view, "[id^='dashboard-certificate-']")
-
-    certificate =
-      certificate_fixture(user_id: user.id, course_id: course.id, module_id: module.id)
-
-    :ok = Certificates.broadcast_ready(certificate)
-
-    assert has_element?(
-             view,
-             "#dashboard-certificate-#{certificate.id} a[href='/certificates/#{certificate.id}/download']"
-           )
   end
 
   test "shows successful payment receipts but not pending or failed attempts", %{

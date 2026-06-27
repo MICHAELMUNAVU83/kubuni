@@ -40,6 +40,60 @@ defmodule Kubuni.Enrollments do
   end
 
   @doc """
+  Counts active enrollments across all courses.
+  """
+  def count_active do
+    Enrollment
+    |> where([e], e.status == :active)
+    |> Repo.aggregate(:count)
+  end
+
+  @doc """
+  Counts active enrollments keyed by `course_id`.
+  """
+  def count_active_by_course do
+    Enrollment
+    |> where([e], e.status == :active)
+    |> group_by([e], e.course_id)
+    |> select([e], {e.course_id, count(e.id)})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc """
+  Counts active enrollments keyed by `user_id`.
+  """
+  def count_active_by_user do
+    Enrollment
+    |> where([e], e.status == :active)
+    |> group_by([e], e.user_id)
+    |> select([e], {e.user_id, count(e.id)})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc """
+  Counts active enrollments for a single course.
+  """
+  def count_active_for_course(course_id) do
+    Enrollment
+    |> where([e], e.status == :active and e.course_id == ^course_id)
+    |> Repo.aggregate(:count)
+  end
+
+  @doc """
+  Lists active enrollments for a course with the learner preloaded, newest
+  first. Used by the admin course detail page.
+  """
+  def list_active_for_course(course_id) do
+    Enrollment
+    |> where([e], e.status == :active and e.course_id == ^course_id)
+    |> order_by([e], desc: e.activated_at, desc: e.id)
+    |> preload(:user)
+    |> Repo.all()
+  end
+
+  @doc """
   Gets a single enrollment.
 
   Raises `Ecto.NoResultsError` if the Enrollment does not exist.

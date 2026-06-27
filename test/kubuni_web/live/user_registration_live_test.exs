@@ -47,12 +47,13 @@ defmodule KubuniWeb.UserRegistrationLiveTest do
 
       assert redirected_to(conn) == ~p"/"
 
-      # Now do a logged in request and assert on the menu
+      # Now do a logged in request and assert the global auth strip stays hidden.
       conn = get(conn, "/")
       response = html_response(conn, 200)
-      assert response =~ email
-      assert response =~ "Settings"
-      assert response =~ "Log out"
+      assert response =~ "Account created successfully!"
+      refute response =~ email
+      refute response =~ "Settings"
+      refute response =~ "Log out"
     end
 
     test "renders errors for duplicated email", %{conn: conn} do

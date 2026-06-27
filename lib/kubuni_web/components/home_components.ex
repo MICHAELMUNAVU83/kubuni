@@ -261,26 +261,62 @@ defmodule KubuniWeb.HomeComponents do
             </div>
           </div>
 
-          <div class="relative">
-            <img
-              src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80"
-              alt="Man working with laptop"
-              class="aspect-[4/5] w-full rounded-[28px] object-cover shadow-2xl"
-            />
+          <div class="relative px-4 pt-2 sm:px-6">
+            <!-- brand diamond mark -->
+            <svg class="absolute -left-2 top-0 z-20 h-12 w-12 text-[#3cb878]" viewBox="0 0 48 48" fill="none">
+              <rect x="9" y="9" width="30" height="30" rx="3" transform="rotate(45 24 24)" stroke="currentColor" stroke-width="4" />
+              <rect x="16" y="16" width="16" height="16" rx="2" transform="rotate(45 24 24)" fill="currentColor" />
+            </svg>
             <!-- students badge -->
-            <div class="absolute left-5 top-8 flex items-center gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
-              <div class="flex -space-x-3">
-                <span class="h-9 w-9 rounded-full border-2 border-white bg-[#0ea5a0]"></span>
-                <span class="h-9 w-9 rounded-full border-2 border-white bg-secondary"></span>
-                <span class="h-9 w-9 rounded-full border-2 border-white bg-amber-400"></span>
-                <span class="h-9 w-9 rounded-full border-2 border-white bg-indigo-500"></span>
+            <div class="absolute left-12 top-2 z-20 rounded-2xl bg-[#efe6fb] px-5 py-4 shadow-sm">
+              <div class="flex items-center">
+                <div class="flex -space-x-3">
+                  <img
+                    src="https://randomuser.me/api/portraits/men/32.jpg"
+                    alt=""
+                    class="h-11 w-11 rounded-full border-[3px] border-[#efe6fb] object-cover"
+                  />
+                  <img
+                    src="https://randomuser.me/api/portraits/men/44.jpg"
+                    alt=""
+                    class="h-11 w-11 rounded-full border-[3px] border-[#efe6fb] object-cover"
+                  />
+                  <img
+                    src="https://randomuser.me/api/portraits/men/55.jpg"
+                    alt=""
+                    class="h-11 w-11 rounded-full border-[3px] border-[#efe6fb] object-cover"
+                  />
+                </div>
+                <span class="ml-3 grid h-11 w-11 place-items-center rounded-full bg-[#e0d3f5] text-indigo-500">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </span>
               </div>
-              <span class="text-sm font-semibold text-dark">120K Students</span>
+              <p class="mt-3 text-xl font-bold text-dark">120K Students</p>
             </div>
-            <!-- rotating star badge -->
-            <div class="absolute -bottom-6 right-6 grid h-28 w-28 place-items-center rounded-full bg-dark text-white shadow-xl">
-              <svg class="h-9 w-9 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21.5 12 17 5.5 21.5 7.5 14 2 9.3 9 9" />
+            <!-- white photo card -->
+            <div class="relative mt-20 rounded-[28px] bg-white p-3 shadow-2xl">
+              <img
+                src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80"
+                alt="Man working with laptop"
+                class="aspect-[4/5] w-full rounded-[20px] object-cover"
+              />
+            </div>
+            <!-- rotating "learn digital abilities" badge -->
+            <div class="absolute -bottom-6 -left-6 z-20 grid h-36 w-36 place-items-center rounded-full bg-[#3cb878] text-white shadow-xl">
+              <svg class="absolute inset-0 h-full w-full animate-[spin_16s_linear_infinite]" viewBox="0 0 100 100">
+                <defs>
+                  <path id="hero-badge-arc" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0" />
+                </defs>
+                <text class="fill-white text-[10px] font-semibold uppercase tracking-[0.24em]">
+                  <textPath href="#hero-badge-arc" startOffset="0%">
+                    Learn Digital Abilities •
+                  </textPath>
+                </text>
+              </svg>
+              <svg class="h-12 w-12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0c1 7.4 4.6 11 12 12-7.4 1-11 4.6-12 12-1-7.4-4.6-11-12-12 7.4-1 11-4.6 12-12Z" />
               </svg>
             </div>
           </div>

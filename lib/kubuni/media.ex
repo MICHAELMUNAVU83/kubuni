@@ -67,6 +67,13 @@ defmodule Kubuni.Media do
     Application.get_env(:kubuni, :media_provider, Kubuni.Media.Unconfigured)
   end
 
+  # A locally uploaded file (served from priv/static/uploads) is streamed as-is.
+  defp protected_stream_url(%Lecture{video_asset_id: "/uploads/" <> _ = path}, _token),
+    do: {:ok, path}
+
+  # A full HLS URL (e.g. seeded public sample) is streamed directly, no token.
+  defp protected_stream_url(%Lecture{video_asset_id: "http" <> _ = url}, _token), do: {:ok, url}
+
   defp protected_stream_url(%Lecture{video_provider: :mux, video_asset_id: playback_id}, token)
        when is_binary(playback_id) and playback_id != "" do
     {:ok, "https://stream.mux.com/#{URI.encode(playback_id)}.m3u8?token=#{URI.encode(token)}"}

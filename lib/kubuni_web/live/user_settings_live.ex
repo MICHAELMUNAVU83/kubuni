@@ -5,12 +5,14 @@ defmodule KubuniWeb.UserSettingsLive do
 
   def render(assigns) do
     ~H"""
-    <.header class="text-center">
-      Account Settings
-      <:subtitle>Manage your account email address and password settings</:subtitle>
-    </.header>
+    <.student_layout active={:account} current_user={@current_user}>
+      <div class="mx-auto max-w-2xl px-5 py-10 lg:px-10 lg:py-12">
+        <.header>
+          Account Settings
+          <:subtitle>Manage your account email address and password settings</:subtitle>
+        </.header>
 
-    <div class="space-y-12 divide-y">
+        <div class="mt-8 space-y-12 divide-y">
       <div>
         <.simple_form
           for={@email_form}
@@ -68,8 +70,10 @@ defmodule KubuniWeb.UserSettingsLive do
             <.button phx-disable-with="Changing...">Change Password</.button>
           </:actions>
         </.simple_form>
+        </div>
       </div>
     </div>
+    </.student_layout>
     """
   end
 

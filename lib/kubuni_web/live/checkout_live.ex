@@ -56,8 +56,9 @@ defmodule KubuniWeb.CheckoutLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <main class="min-h-screen bg-gradient-to-b from-mint via-white to-soft py-16">
-      <div class="mx-auto max-w-2xl px-5">
+    <.student_layout active={:courses} current_user={@current_user}>
+      <div class="bg-gradient-to-b from-mint via-white to-soft py-16">
+        <div class="mx-auto max-w-2xl px-5">
         <.link navigate={~p"/courses/#{@course.slug}"} class="text-sm font-medium text-primary">
           ← Back to course
         </.link>
@@ -90,8 +91,9 @@ defmodule KubuniWeb.CheckoutLive do
             {if @submitting, do: "Opening Paystack…", else: "Enroll & Pay"}
           </button>
         </section>
+        </div>
       </div>
-    </main>
+    </.student_layout>
     """
   end
 end

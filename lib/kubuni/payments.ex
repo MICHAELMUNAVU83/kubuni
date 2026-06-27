@@ -31,9 +31,104 @@ defmodule Kubuni.Payments do
   end
 
   def format_amount(%Payment{amount_minor: amount, currency: currency}) do
-    amount
+    format_minor(amount, currency)
+  end
+
+  @doc """
+  Formats a raw minor-unit amount (e.g. a summed revenue figure) for display,
+  matching the convention used for individual payment receipts.
+  """
+  def format_minor(amount, currency \\ "KES") do
+    (amount || 0)
     |> Money.new(currency)
     |> Money.to_string(symbol: false, code: true)
+  end
+
+  @doc """
+  Total revenue, in minor units, across all successful payments.
+  """
+  def total_revenue_minor do
+    Payment
+    |> where([p], p.status == :successful)
+    |> Repo.aggregate(:sum, :amount_minor) || 0
+  end
+
+  @doc """
+  Successful revenue, in minor units, keyed by `course_id`.
+  """
+  def revenue_minor_by_course do
+    Payment
+    |> where([p], p.status == :successful)
+    |> group_by([p], p.course_id)
+    |> select([p], {p.course_id, sum(p.amount_minor)})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc """
+  Successful revenue, in minor units, for a single course.
+  """
+  def revenue_minor_for_course(course_id) do
+    Payment
+    |> where([p], p.status == :successful and p.course_id == ^course_id)
+    |> Repo.aggregate(:sum, :amount_minor) || 0
+  end
+
+  @doc """
+  Successful revenue, in minor units, keyed by `user_id`.
+  """
+  def revenue_minor_by_user do
+    Payment
+    |> where([p], p.status == :successful)
+    |> group_by([p], p.user_id)
+    |> select([p], {p.user_id, sum(p.amount_minor)})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc """
+  Counts payments, optionally scoped to a status.
+  """
+  def count_payments, do: Repo.aggregate(Payment, :count)
+
+  def count_payments(status) do
+    Payment
+    |> where([p], p.status == ^status)
+    |> Repo.aggregate(:count)
+  end
+
+  @doc """
+  Lists the most recent payments with the learner and course preloaded.
+  """
+  def list_recent_payments(limit \\ 25) do
+    Payment
+    |> order_by([p], desc: p.inserted_at, desc: p.id)
+    |> limit(^limit)
+    |> preload([:user, :course])
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists every payment made against a course, learner preloaded, newest first.
+  """
+  def list_payments_for_course(course_id) do
+    Payment
+    |> where([p], p.course_id == ^course_id)
+    |> order_by([p], desc: p.inserted_at, desc: p.id)
+    |> preload(:user)
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists every payment a user has made (any status), course preloaded, newest
+  first. Intended for the admin student detail page.
+  """
+  def list_payments_for_user(user_id) do
+    Payment
+    |> where([p], p.user_id == ^user_id)
+    |> order_by([p], desc: p.inserted_at, desc: p.id)
+    |> preload(:course)
+    |> Repo.all()
   end
 
   def get_payment!(id), do: Repo.get!(Payment, id)

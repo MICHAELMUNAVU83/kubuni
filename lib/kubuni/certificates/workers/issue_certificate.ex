@@ -32,7 +32,7 @@ defmodule Kubuni.Certificates.Workers.IssueCertificate do
          {:ok, certificate, status} <- Certificates.issue(user_id, type, scope_id) do
       if status == :created do
         :ok = Certificates.broadcast_ready(certificate)
-        {:ok, _job} = Oban.insert(DeliverCertificateIssued.new(certificate.id))
+        {:ok, _job} = Oban.insert(DeliverCertificateIssued.for_certificate(certificate.id))
       end
 
       :ok

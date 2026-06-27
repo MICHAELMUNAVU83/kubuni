@@ -192,6 +192,19 @@ defmodule Kubuni.CatalogTest do
       course_module = course_module_fixture()
       assert %Ecto.Changeset{} = Catalog.change_course_module(course_module)
     end
+
+    test "reorder_course_modules/2 persists modules in the requested order" do
+      course = course_fixture()
+      first = course_module_fixture(course_id: course.id, position: 1, title: "First")
+      second = course_module_fixture(course_id: course.id, position: 2, title: "Second")
+      third = course_module_fixture(course_id: course.id, position: 3, title: "Third")
+
+      assert {:ok, _} = Catalog.reorder_course_modules(course.id, [third.id, first.id, second.id])
+
+      course = Catalog.get_course_with_outline!(course.id)
+      assert Enum.map(course.modules, & &1.id) == [third.id, first.id, second.id]
+      assert Enum.map(course.modules, & &1.position) == [1, 2, 3]
+    end
   end
 
   describe "lectures" do
@@ -280,6 +293,21 @@ defmodule Kubuni.CatalogTest do
     test "change_lecture/1 returns a lecture changeset" do
       lecture = lecture_fixture()
       assert %Ecto.Changeset{} = Catalog.change_lecture(lecture)
+    end
+
+    test "reorder_module_lectures/2 persists lectures in the requested order" do
+      course_module = course_module_fixture()
+      first = lecture_fixture(module_id: course_module.id, position: 1, title: "First")
+      second = lecture_fixture(module_id: course_module.id, position: 2, title: "Second")
+      third = lecture_fixture(module_id: course_module.id, position: 3, title: "Third")
+
+      assert {:ok, _} =
+               Catalog.reorder_module_lectures(course_module.id, [second.id, third.id, first.id])
+
+      course = Catalog.get_course_with_outline!(course_module.course_id)
+      [module] = course.modules
+      assert Enum.map(module.lectures, & &1.id) == [second.id, third.id, first.id]
+      assert Enum.map(module.lectures, & &1.position) == [1, 2, 3]
     end
 
     test "slug lookup preloads modules and lectures in position order" do

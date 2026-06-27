@@ -17,7 +17,7 @@ defmodule KubuniWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
+  def static_paths, do: ~w(assets fonts images uploads favicon.ico robots.txt)
 
   def router do
     quote do
@@ -89,6 +89,10 @@ defmodule KubuniWeb do
       import Phoenix.HTML
       # Core UI components
       import KubuniWeb.CoreComponents
+      # Shared learner sidebar chrome
+      import KubuniWeb.StudentComponents
+      # Shared admin sidebar chrome
+      import KubuniWeb.AdminComponents
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS

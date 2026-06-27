@@ -4,7 +4,7 @@ defmodule KubuniWeb.Router do
   import KubuniWeb.UserAuth
 
   pipeline :browser do
-    plug :accepts, ["html"]
+    plug :accepts, ["html", "json"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {KubuniWeb.Layouts, :root}
@@ -81,6 +81,8 @@ defmodule KubuniWeb.Router do
       live "/users/settings", UserSettingsLive, :edit
       live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
       live "/dashboard", DashboardLive, :index
+      live "/courses-taken", CoursesTakenLive, :index
+      live "/certificates", CertificatesLive, :index
       live "/courses/:slug/checkout", CheckoutLive, :show
       live "/learn/courses/:slug", CoursePlayerLive, :show
     end
@@ -95,6 +97,18 @@ defmodule KubuniWeb.Router do
 
     live_session :require_admin,
       on_mount: [{KubuniWeb.UserAuth, :ensure_admin}] do
+      live "/", AdminLive.Dashboard, :index
+
+      live "/courses", AdminLive.Courses, :index
+      live "/courses/new", AdminLive.Courses, :new
+      live "/courses/:id/edit", AdminLive.Courses, :edit
+      live "/courses/:id", AdminLive.CourseShow, :show
+
+      live "/students", AdminLive.Students, :index
+      live "/students/:id", AdminLive.StudentShow, :show
+
+      live "/payments", AdminLive.Payments, :index
+
       live "/lectures/:id/video", AdminLectureVideoLive, :edit
     end
   end

@@ -35,3 +35,7 @@ kubuni-*.tar
 npm-debug.log
 /assets/node_modules/
 
+
+# User-uploaded media (keep the dir, ignore the files)
+/priv/static/uploads/*
+!/priv/static/uploads/.gitkeep

@@ -24,6 +24,29 @@ defmodule Kubuni.Catalog do
   end
 
   @doc """
+  Counts all courses regardless of status. Used by the admin overview.
+  """
+  def count_courses, do: Repo.aggregate(Course, :count)
+
+  @doc """
+  Counts courses currently in the given status (`:draft` or `:published`).
+  """
+  def count_courses(status) do
+    Course
+    |> where([course], course.status == ^status)
+    |> Repo.aggregate(:count)
+  end
+
+  @doc """
+  Gets a single course by id with its ordered modules and lectures preloaded.
+  """
+  def get_course_with_outline!(id) do
+    Course
+    |> Repo.get!(id)
+    |> preload_outline()
+  end
+
+  @doc """
   Lists published courses in their public display order.
   """
   def list_published_courses do
@@ -235,6 +258,16 @@ defmodule Kubuni.Catalog do
   end
 
   @doc """
+  Reorders all modules in a course using the given module ids.
+  """
+  def reorder_course_modules(course_id, module_ids) when is_list(module_ids) do
+    with {:ok, module_ids} <- normalize_ids(module_ids),
+         {:ok, modules} <- fetch_reorderable(CourseModule, :course_id, course_id, module_ids) do
+      reorder_records(modules, module_ids, CourseModule)
+    end
+  end
+
+  @doc """
   Deletes a course_module.
 
   ## Examples
@@ -331,6 +364,16 @@ defmodule Kubuni.Catalog do
   end
 
   @doc """
+  Reorders all lectures in a module using the given lecture ids.
+  """
+  def reorder_module_lectures(module_id, lecture_ids) when is_list(lecture_ids) do
+    with {:ok, lecture_ids} <- normalize_ids(lecture_ids),
+         {:ok, lectures} <- fetch_reorderable(Lecture, :module_id, module_id, lecture_ids) do
+      reorder_records(lectures, lecture_ids, Lecture)
+    end
+  end
+
+  @doc """
   Deletes a lecture.
 
   ## Examples
@@ -357,5 +400,77 @@ defmodule Kubuni.Catalog do
   """
   def change_lecture(%Lecture{} = lecture, attrs \\ %{}) do
     Lecture.changeset(lecture, attrs)
+  end
+
+  defp normalize_ids(ids) do
+    ids
+    |> Enum.reduce_while({:ok, []}, fn
+      id, {:ok, ids} ->
+        case parse_id(id) do
+          {:ok, id} -> {:cont, {:ok, [id | ids]}}
+          :error -> {:halt, {:error, :invalid_ids}}
+        end
+    end)
+    |> case do
+      {:ok, ids} ->
+        ids = Enum.reverse(ids)
+
+        if Enum.uniq(ids) == ids do
+          {:ok, ids}
+        else
+          {:error, :invalid_ids}
+        end
+
+      error ->
+        error
+    end
+  end
+
+  defp fetch_reorderable(schema, parent_key, parent_id, ids) do
+    with {:ok, parent_id} <- parse_id(parent_id) do
+      records =
+        schema
+        |> where([record], field(record, ^parent_key) == ^parent_id)
+        |> order_by([record], asc: record.position)
+        |> Repo.all()
+
+      if Enum.map(records, & &1.id) |> Enum.sort() == Enum.sort(ids) do
+        {:ok, records}
+      else
+        {:error, :invalid_order}
+      end
+    end
+  end
+
+  defp parse_id(id) when is_integer(id) and id > 0, do: {:ok, id}
+
+  defp parse_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {id, ""} when id > 0 -> {:ok, id}
+      _invalid -> :error
+    end
+  end
+
+  defp parse_id(_id), do: :error
+
+  defp reorder_records(records, ordered_ids, schema) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    offset = Enum.max(Enum.map(records, & &1.position), fn -> 0 end) + length(records) + 1
+
+    Repo.transaction(fn ->
+      records
+      |> Enum.with_index(1)
+      |> Enum.each(fn {record, index} ->
+        from(item in schema, where: item.id == ^record.id)
+        |> Repo.update_all(set: [position: offset + index, updated_at: now])
+      end)
+
+      ordered_ids
+      |> Enum.with_index(1)
+      |> Enum.each(fn {id, position} ->
+        from(item in schema, where: item.id == ^id)
+        |> Repo.update_all(set: [position: position, updated_at: now])
+      end)
+    end)
   end
 end

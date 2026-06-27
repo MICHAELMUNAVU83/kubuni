@@ -10,7 +10,7 @@ defmodule Kubuni.Notifications.Workers.DeliverCertificateIssued do
   alias Kubuni.Certificates
   alias Kubuni.Repo
 
-  def new(certificate_id), do: __MODULE__.new(%{certificate_id: certificate_id})
+  def for_certificate(certificate_id), do: new(%{certificate_id: certificate_id})
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"certificate_id" => certificate_id}}) do

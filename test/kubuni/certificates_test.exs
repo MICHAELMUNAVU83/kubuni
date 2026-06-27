@@ -38,18 +38,26 @@ defmodule Kubuni.CertificatesTest do
            ) == 2
 
     assert :ok =
-             Oban.Testing.perform_job(IssueCertificate, %{
-               user_id: context.user.id,
-               type: "module",
-               scope_id: context.module.id
-             })
+             Oban.Testing.perform_job(
+               IssueCertificate,
+               %{
+                 user_id: context.user.id,
+                 type: "module",
+                 scope_id: context.module.id
+               },
+               []
+             )
 
     assert :ok =
-             Oban.Testing.perform_job(IssueCertificate, %{
-               user_id: context.user.id,
-               type: "course",
-               scope_id: context.course.id
-             })
+             Oban.Testing.perform_job(
+               IssueCertificate,
+               %{
+                 user_id: context.user.id,
+                 type: "course",
+                 scope_id: context.course.id
+               },
+               []
+             )
 
     certificates = Certificates.list_for_user_course(context.user, context.course)
     assert Enum.map(certificates, & &1.type) |> Enum.sort() == [:course, :module]
@@ -67,8 +75,8 @@ defmodule Kubuni.CertificatesTest do
       scope_id: context.module.id
     }
 
-    assert :ok = Oban.Testing.perform_job(IssueCertificate, args)
-    assert :ok = Oban.Testing.perform_job(IssueCertificate, args)
+    assert :ok = Oban.Testing.perform_job(IssueCertificate, args, [])
+    assert :ok = Oban.Testing.perform_job(IssueCertificate, args, [])
 
     assert Repo.aggregate(
              from(certificate in Certificate,

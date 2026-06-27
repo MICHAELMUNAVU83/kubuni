@@ -10,6 +10,9 @@ config :kubuni, Kubuni.Repo,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
+# Stream public HLS samples locally so the course player works without Mux.
+config :kubuni, media_provider: Kubuni.Media.Demo
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #
