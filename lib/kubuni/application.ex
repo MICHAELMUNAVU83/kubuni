@@ -11,7 +11,7 @@ defmodule Kubuni.Application do
       KubuniWeb.Telemetry,
       Kubuni.Repo,
       {Oban, Application.fetch_env!(:kubuni, Oban)},
-      chromic_pdf_child(),
+      # chromic_pdf_child(),
       {DNSCluster, query: Application.get_env(:kubuni, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Kubuni.PubSub},
       # Start the Finch HTTP client for sending emails
