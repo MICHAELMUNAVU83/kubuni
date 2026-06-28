@@ -24,7 +24,7 @@ defmodule KubuniWeb.HomeComponents do
                 />
               </svg>
             </span>
-            <span class="text-2xl font-bold text-dark">Monkshub</span>
+            <span class="text-2xl font-bold text-dark">Kubuni</span>
           </a>
           
     <!-- mobile toggle (peer checkbox) -->
@@ -303,7 +303,7 @@ defmodule KubuniWeb.HomeComponents do
               />
             </div>
             <!-- rotating "learn digital abilities" badge -->
-            <div class="absolute -bottom-6 -left-6 z-20 grid h-36 w-36 place-items-center rounded-full bg-[#3cb878] text-white shadow-xl">
+            <div class="absolute -bottom-6 -left-6 z-20 grid h-36 w-36 place-items-center rounded-full bg-[#f97316] text-white shadow-xl">
               <svg
                 class="absolute inset-0 h-full w-full animate-[spin_16s_linear_infinite]"
                 viewBox="0 0 100 100"
@@ -2176,7 +2176,7 @@ defmodule KubuniWeb.HomeComponents do
                   />
                 </svg>
               </span>
-              <span class="text-2xl font-bold text-dark">Monkshub</span>
+              <span class="text-2xl font-bold text-dark">Kubuni</span>
             </a>
             <p class="mt-5 max-w-xs text-body">Unlock knowledge with expert-led online courses.</p>
             <div class="mt-6 flex gap-3">

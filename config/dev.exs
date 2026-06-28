@@ -22,7 +22,7 @@ config :kubuni, media_provider: Kubuni.Media.Demo
 # Binding to loopback ipv4 address prevents access from other machines.
 config :kubuni, KubuniWeb.Endpoint,
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}, port: 4000],
+  http: [port: 4590],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
