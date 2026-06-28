@@ -12,7 +12,6 @@ config :kubuni,
   generators: [timestamp_type: :utc_datetime],
   payment_provider: Kubuni.Paystack,
   media_provider: Kubuni.Media.Mux,
-  certificate_renderer: Kubuni.Certificates.Renderers.ChromicPDF,
   certificate_storage: Kubuni.Certificates.Storage.R2,
   paystack_api_url: "https://api.paystack.co",
   paystack_callback_url: "http://localhost:4000/payments/paystack/callback",
@@ -28,11 +27,6 @@ config :kubuni, Oban,
        {"* * * * *", Kubuni.Payments.Workers.ReconcilePendingPayments}
      ]}
   ]
-
-config :kubuni, ChromicPDF,
-  disable_scripts: true,
-  offline: true,
-  session_pool: [size: 2, timeout: 15_000]
 
 # Configures the endpoint
 config :kubuni, KubuniWeb.Endpoint,

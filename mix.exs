@@ -60,7 +60,6 @@ defmodule Kubuni.MixProject do
       {:money, "~> 1.15"},
       {:req, "~> 0.5"},
       {:oban, "~> 2.18"},
-      # {:chromic_pdf, "~> 1.17"},
       {:ex_aws, "~> 2.7"},
       {:ex_aws_s3, "~> 2.5"},
       {:hackney, "~> 4.0"},
