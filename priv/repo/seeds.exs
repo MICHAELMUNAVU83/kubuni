@@ -35,7 +35,7 @@ courses = [
   %{
     attrs: %{
       slug: "the-human-stack",
-      title: "The Human Stack",
+      title: "The Human Stack by Alvas",
       subtitle: "Communication and presentation skills for technology professionals",
       description:
         "Turn complex technical thinking into clear messages, persuasive presentations, and productive workplace conversations.",
