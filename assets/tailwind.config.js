@@ -14,13 +14,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#009d77",
-        dark: "#011813",
-        body: "#4e5255",
-        muted: "#98a2b3",
-        secondary: "#ea4c89",
-        soft: "#f8f8f8",
-        mint: "#f0fdf9",
+        primary: "#f97316",
+        dark: "#0a0a0a",
+        body: "#404040",
+        muted: "#a3a3a3",
+        secondary: "#1a1a1a",
+        soft: "#ffffff",
+        mint: "#fff7ed",
       },
       fontFamily: {
         sans: ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],

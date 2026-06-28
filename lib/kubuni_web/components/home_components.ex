@@ -24,7 +24,7 @@ defmodule KubuniWeb.HomeComponents do
                 />
               </svg>
             </span>
-            <span class="text-2xl font-bold text-dark">Monkshub</span>
+            <span class="text-2xl font-bold text-dark">Kubuni</span>
           </a>
           
     <!-- mobile toggle (peer checkbox) -->
@@ -2176,7 +2176,7 @@ defmodule KubuniWeb.HomeComponents do
                   />
                 </svg>
               </span>
-              <span class="text-2xl font-bold text-dark">Monkshub</span>
+              <span class="text-2xl font-bold text-dark">Kubuni</span>
             </a>
             <p class="mt-5 max-w-xs text-body">Unlock knowledge with expert-led online courses.</p>
             <div class="mt-6 flex gap-3">
